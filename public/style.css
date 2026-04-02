@@ -1716,6 +1716,10 @@ a:hover {
 }
 
 /* --- Responsive --- */
+/* ============================================
+   RESPONSIVE / MOBILE
+   ============================================ */
+
 @media (max-width: 1024px) {
   .main-layout {
     flex-direction: column;
@@ -1742,53 +1746,460 @@ a:hover {
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
+  html {
+    font-size: 13px;
   }
 
+  /* --- Header: stack vertically, compact --- */
+  .header {
+    padding: 10px 12px;
+    position: sticky;
+    top: 0;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .header-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .header-title h1 {
+    font-size: 1.15rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  /* --- Nav tabs: horizontal scroll, compact --- */
   .header-nav {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 1px;
+    padding: 2px;
   }
 
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tab {
+    padding: 7px 12px;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  /* --- Header actions: row, full width --- */
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .header-actions .btn {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* --- Tab content --- */
+  .tab-content {
+    padding: 0 10px 16px;
+  }
+
+  /* --- Stats bar --- */
   .stats-bar {
     grid-template-columns: repeat(2, 1fr);
-    padding: 12px 0;
+    gap: 8px;
+    padding: 10px 0;
   }
 
-  .tab-content {
-    padding: 0 12px 12px;
+  .stat-card {
+    padding: 10px 12px;
   }
 
+  .stat-value {
+    font-size: 1.1rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  /* --- Section titles --- */
+  .section-title {
+    font-size: 1.05rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+  }
+
+  /* --- Dashboard prompt --- */
+  .dashboard-prompt {
+    padding: 40px 16px;
+  }
+
+  .dashboard-prompt h2 {
+    font-size: 1.2rem;
+  }
+
+  .prompt-icon {
+    font-size: 2.5rem;
+  }
+
+  /* --- Leaderboard tables: ensure horizontal scroll --- */
+  .table-container,
+  .dashboard-section .table-container {
+    margin: 0 -10px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .leaderboard-table {
+    font-size: 0.75rem;
+    min-width: 700px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 8px 10px;
+  }
+
+  .leaderboard-table td.name-cell {
+    position: sticky;
+    left: 0;
+    background: var(--bg-secondary);
+    z-index: 2;
+    min-width: 110px;
+  }
+
+  .leaderboard-table th:nth-child(2) {
+    position: sticky;
+    left: 0;
+    background: var(--bg-tertiary);
+    z-index: 3;
+  }
+
+  /* --- Listings table mobile --- */
+  .listings-table {
+    font-size: 0.75rem;
+  }
+
+  .listings-table th,
+  .listings-table td {
+    padding: 8px 8px;
+  }
+
+  /* --- Cards: single column --- */
+  .opportunities-grid,
+  .trends-grid,
+  .favorites-grid,
+  .wealth-picks {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .opp-card,
+  .trend-card,
+  .wealth-card {
+    padding: 14px;
+  }
+
+  /* --- Charts: taller on mobile for readability --- */
+  .chart-card {
+    padding: 14px;
+  }
+
+  .chart-card canvas {
+    max-height: 280px;
+  }
+
+  .chart-card h3 {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+  }
+
+  /* --- Filters --- */
   .filter-body {
     grid-template-columns: 1fr;
   }
 
+  .filter-panel {
+    border-radius: 0;
+    margin: 0 -10px;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* --- Modal --- */
   .modal {
-    margin: 12px;
-    max-height: 90vh;
+    margin: 8px;
+    max-height: 92vh;
+    border-radius: var(--radius);
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
   }
 
   .detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .opportunities-grid,
-  .trends-grid,
-  .favorites-grid,
-  .wealth-picks {
-    grid-template-columns: 1fr;
+  /* --- Compare --- */
+  .compare-container {
+    margin: 0 -10px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* --- Favorites --- */
+  .favorites-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .favorites-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .favorites-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.78rem;
+  }
+
+  /* --- Update banner --- */
+  .update-banner {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* --- Wealth metrics --- */
+  .wealth-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* --- Opportunity stats --- */
+  .opp-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  /* --- Trend card stats --- */
+  .trend-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  /* --- Last updated --- */
+  .last-updated {
+    font-size: 0.72rem;
   }
 }
 
 @media (max-width: 480px) {
-  .stats-bar {
-    grid-template-columns: 1fr;
+  html {
+    font-size: 12.5px;
   }
 
+  .header {
+    padding: 8px 8px;
+  }
+
+  .header-title h1 {
+    font-size: 1.05rem;
+  }
+
+  .nav-tab {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+
+  .tab-content {
+    padding: 0 6px 12px;
+  }
+
+  /* Stats bar: single column */
+  .stats-bar {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .stat-card {
+    padding: 8px 12px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  /* Header actions: stack */
   .header-actions {
-    width: 100%;
     flex-direction: column;
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    width: 100%;
+  }
+
+  /* Table containers: full bleed */
+  .table-container,
+  .dashboard-section .table-container {
+    margin: 0 -6px;
+  }
+
+  .leaderboard-table {
+    font-size: 0.72rem;
+    min-width: 600px;
+  }
+
+  /* Cards: tighter padding */
+  .opp-card,
+  .trend-card,
+  .wealth-card {
+    padding: 12px;
+  }
+
+  .wealth-metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  /* Charts */
+  .chart-card canvas {
+    max-height: 220px;
+  }
+
+  /* Modal */
+  .modal {
+    margin: 4px;
+  }
+
+  .modal-header h2 {
+    font-size: 1rem;
+  }
+
+  /* Dashboard prompt */
+  .dashboard-prompt {
+    padding: 30px 12px;
+  }
+
+  .dashboard-prompt h2 {
+    font-size: 1.05rem;
+  }
+
+  .dashboard-prompt p {
+    font-size: 0.85rem;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.75rem;
+  }
+
+  /* Compare header */
+  .compare-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  /* Trend card actions */
+  .trend-card-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* --- Touch-friendly: larger tap targets on touch devices --- */
+@media (hover: none) and (pointer: coarse) {
+  .nav-tab {
+    min-height: 40px;
+  }
+
+  .btn {
+    min-height: 40px;
+  }
+
+  .btn-sm {
+    min-height: 34px;
+    padding: 6px 12px;
+  }
+
+  .listings-table th,
+  .listings-table td {
+    padding: 10px 8px;
+  }
+
+  .leaderboard-table td.name-cell a.browse-name-link {
+    padding: 4px 0;
+    display: inline-block;
+  }
+
+  .toggle-btn {
+    min-height: 38px;
+    padding: 8px 14px;
+  }
+
+  input[type="number"],
+  select,
+  .input-sm,
+  .input-select {
+    min-height: 40px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .multi-select-trigger {
+    min-height: 40px;
+  }
+
+  .modal-close {
+    width: 40px;
+    height: 40px;
+    font-size: 1.4rem;
+  }
+
+  /* Larger checkboxes */
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
   }
 }
