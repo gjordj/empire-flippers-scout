@@ -2698,6 +2698,18 @@ a:hover {
 .scatter-dot-green { background: rgba(46, 160, 67, 0.85); }
 .scatter-dot-yellow { background: rgba(210, 153, 34, 0.85); }
 .scatter-dot-red { background: rgba(218, 54, 51, 0.85); }
+.scatter-legend-size {
+  gap: 3px;
+}
+.scatter-dot-sm, .scatter-dot-md, .scatter-dot-lg {
+  display: inline-block;
+  border-radius: 50%;
+  background: rgba(139, 148, 158, 0.7);
+  vertical-align: middle;
+}
+.scatter-dot-sm { width: 6px; height: 6px; }
+.scatter-dot-md { width: 11px; height: 11px; }
+.scatter-dot-lg { width: 17px; height: 17px; }
 
 /* --- Responsive --- */
 /* ============================================
