@@ -1761,11 +1761,13 @@
 
       // 4. Moat / Defensibility (0-15, inverted replicability)
       var replic = calculateReplicability(l, md);
-      var moatScore = Math.min(15, (100 - replic.score) * 0.15);
+      var replicScore = (replic && typeof replic.score === 'number' && !isNaN(replic.score)) ? replic.score : 50;
+      var moatScore = Math.min(15, (100 - replicScore) * 0.15);
 
       // 5. Niche Demand (0-10): how fast similar businesses sell
-      var nicheDays = niches.map(function(nn) { return nicheAvgDays[nn]; }).filter(function(d) { return d != null; });
+      var nicheDays = niches.map(function(nn) { return nicheAvgDays[nn]; }).filter(function(d) { return d != null && !isNaN(d); });
       var avgNicheDays = nicheDays.length ? nicheDays.reduce(function(a, b) { return a + b; }, 0) / nicheDays.length : 90;
+      if (isNaN(avgNicheDays)) avgNicheDays = 90;
       var demandScore = Math.max(0, Math.min(10, (90 - avgNicheDays) * 0.15));
 
       // 6. Value Gap (0-10): priced below niche median multiple
@@ -1782,7 +1784,8 @@
         passiveScore = 4;
       }
 
-      var alpha = Math.min(100, Math.round(roiScore + marginScore + riskScore + moatScore + demandScore + valueScore + passiveScore));
+      var rawAlpha = roiScore + marginScore + riskScore + moatScore + demandScore + valueScore + passiveScore;
+      var alpha = isNaN(rawAlpha) ? 0 : Math.min(100, Math.round(rawAlpha));
 
       // Build "why" explanation
       var reasons = [];
