@@ -9,7 +9,13 @@ const EF_API_BASE = "https://api.empireflippers.com/api/v1";
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  maxAge: "1h",
+  setHeaders: (res, filePath) => {
+    // Let Vercel CDN cache static assets
+    res.set("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400");
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // In-memory cache (key -> { data, timestamp })
@@ -68,6 +74,7 @@ app.get("/api/config", async (req, res) => {
 
     const data = await rateLimitedFetch(`${EF_API_BASE}/ef-config`);
     setCache("config", data);
+    res.set("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
     res.json(data);
   } catch (err) {
     console.error("Error fetching config:", err.message);
@@ -111,6 +118,7 @@ app.get("/api/listings", async (req, res) => {
 
     const url = `${EF_API_BASE}/listings/list?${params.toString()}`;
     const data = await rateLimitedFetch(url);
+    res.set("Cache-Control", "s-maxage=180, stale-while-revalidate=300");
     res.json(data);
   } catch (err) {
     console.error("Error fetching listings:", err.message);
@@ -125,6 +133,7 @@ app.get("/api/listings/recommendations/:id", async (req, res) => {
   try {
     const url = `${EF_API_BASE}/listings/recommendations?id=${encodeURIComponent(req.params.id)}`;
     const data = await rateLimitedFetch(url);
+    res.set("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
     res.json(data);
   } catch (err) {
     console.error("Error fetching recommendations:", err.message);
@@ -175,6 +184,7 @@ app.get("/api/fetch-all", async (req, res) => {
     const result = { total: allListings.length, listings: allListings };
     setCache(cacheKey, result);
     console.log(`Fetched ${allListings.length} total "${listingStatus}" listings (${page} pages).`);
+    res.set("Cache-Control", "s-maxage=600, stale-while-revalidate=1800");
     res.json(result);
   } catch (err) {
     console.error("Error in fetch-all:", err.message);
@@ -209,6 +219,7 @@ app.get("/api/listings/check", async (req, res) => {
       checkedAt: new Date().toISOString(),
     };
     setCache("listings-check", result);
+    res.set("Cache-Control", "s-maxage=120, stale-while-revalidate=300");
     res.json(result);
   } catch (err) {
     console.error("Error in listings check:", err.message);
@@ -239,6 +250,7 @@ app.get("/api/dashboard-data", async (req, res) => {
       fetchedAt: new Date().toISOString(),
     };
     setCache(cacheKey, result);
+    res.set("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
     res.json(result);
   } catch (err) {
     console.error("Error in dashboard-data:", err.message);
