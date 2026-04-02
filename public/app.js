@@ -2225,8 +2225,8 @@
       // Data loaded from cache - check for new listings in background
       setTimeout(() => checkForNewListings(), 2000);
     } else {
-      // No cached data - show the prompt
-      dom.dashboardPrompt.classList.remove('hidden');
+      // No cached data - auto-fetch immediately
+      loadDashboard();
     }
   }
 
