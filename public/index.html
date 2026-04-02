@@ -108,7 +108,7 @@
           <span class="toc-group-label">Flip & Returns</span>
           <div class="toc-links">
             <a href="#sec-flip" class="toc-link">Flip Analyzer</a>
-            <a href="#sec-scatter" class="toc-link">Revenue vs Profit</a>
+            <a href="#sec-scatter" class="toc-link">Margin vs Price</a>
             <a href="#sec-roi" class="toc-link">ROI Projections</a>
           </div>
         </div>
@@ -429,12 +429,12 @@
       </div>
 
       <div class="dashboard-section" id="sec-scatter">
-        <h2 class="section-title">Revenue vs Profit Efficiency Map</h2>
-        <p class="section-subtitle">Each dot is a listing. Dots near the diagonal line are highly efficient (most revenue becomes profit). Dots far below it have low margins — the biggest improvement opportunities. Click any dot to view.</p>
+        <h2 class="section-title">Margin vs Price — Deal Finder</h2>
+        <p class="section-subtitle">Find the best deals: top-left = high margin at a low price (sweet spot). Bottom-right = low margin at a high price (avoid). Dot size = monthly profit. Dashed line = median margin. Click any dot to view.</p>
         <div class="scatter-legend">
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-green"></span> High margin (&ge;50%)</span>
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-yellow"></span> Medium margin (30-50%)</span>
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-red"></span> Low margin (&lt;30%)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-green"></span> Low multiple (&le;36x = fast payback)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-yellow"></span> Medium multiple (36-48x)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-red"></span> High multiple (&gt;48x = slow payback)</span>
         </div>
         <div class="chart-card chart-card-wide">
           <canvas id="chart-scatter-rev-profit"></canvas>

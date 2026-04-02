@@ -2986,7 +2986,7 @@
   }
 
   // =====================================================================
-  //  NEW ANALYSIS: Revenue vs Profit Scatter Plot
+  //  MARGIN vs PRICE SCATTER — find high-margin deals at low prices
   // =====================================================================
   function renderScatterRevProfit(forSale) {
     destroyChart('scatterRevProfit');
@@ -2998,52 +2998,55 @@
         const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
         const profit = parseFloat(l.average_monthly_net_profit || 0);
         const price = parseFloat(l.listing_price || 0);
+        const multiple = parseFloat(l.listing_multiple || 0);
         const margin = revenue > 0 ? (profit / revenue * 100) : 0;
         const num = l.listing_number || l.id;
-        if (revenue <= 0 || profit <= 0) return null;
-        return { x: revenue, y: profit, margin, num, price };
+        const niche = getNicheNames(l)[0] || 'Unknown';
+        if (revenue <= 0 || profit <= 0 || price <= 0) return null;
+        return { x: price, y: margin, num, profit, revenue, multiple, niche };
       })
       .filter(Boolean);
 
-    // Remove outliers for better chart readability
-    const revenues = data.map(d => d.x);
-    const cleanRevenues = removeOutliers(revenues);
-    const maxRev = cleanRevenues.length ? Math.max(...cleanRevenues) * 1.1 : 100000;
-    const filtered = data.filter(d => d.x <= maxRev);
+    // Remove price outliers
+    const priceVals = data.map(d => d.x);
+    const cleanPrices = removeOutliers(priceVals);
+    const maxPrice = cleanPrices.length ? Math.max(...cleanPrices) * 1.1 : 5000000;
+    const filtered = data.filter(d => d.x <= maxPrice);
 
+    // Color by multiple (good deal = low multiple = green)
     const colors = filtered.map(d =>
-      d.margin >= 50 ? 'rgba(46, 160, 67, 0.85)' :
-      d.margin >= 30 ? 'rgba(210, 153, 34, 0.85)' :
-      'rgba(218, 54, 51, 0.85)'
+      d.multiple > 0 && d.multiple <= 36 ? 'rgba(46, 160, 67, 0.8)' :
+      d.multiple <= 48 ? 'rgba(210, 153, 34, 0.8)' :
+      'rgba(218, 54, 51, 0.8)'
     );
     const borderColors = filtered.map(d =>
-      d.margin >= 50 ? 'rgba(46, 160, 67, 1)' :
-      d.margin >= 30 ? 'rgba(210, 153, 34, 1)' :
+      d.multiple > 0 && d.multiple <= 36 ? 'rgba(46, 160, 67, 1)' :
+      d.multiple <= 48 ? 'rgba(210, 153, 34, 1)' :
       'rgba(218, 54, 51, 1)'
     );
 
-    // Scale dot sizes by price (bigger = more expensive)
-    const prices = filtered.map(d => d.price);
-    const minP = Math.min(...prices) || 1;
-    const maxP = Math.max(...prices) || 1;
+    // Dot size by monthly profit
+    const profits = filtered.map(d => d.profit);
+    const minProf = Math.min(...profits) || 1;
+    const maxProf = Math.max(...profits) || 1;
     const sizes = filtered.map(d => {
-      const norm = maxP > minP ? (d.price - minP) / (maxP - minP) : 0.5;
+      const norm = maxProf > minProf ? (d.profit - minProf) / (maxProf - minProf) : 0.5;
       return 5 + norm * 12;
     });
 
-    // Diagonal reference line dataset (100% margin line: profit = revenue)
-    const axisMax = Math.min(maxRev, Math.max(...filtered.map(d => d.y)) * 1.2);
-    const diagonalData = [{ x: 0, y: 0 }, { x: axisMax, y: axisMax }];
+    // Median margin reference line
+    const margins = filtered.map(d => d.y).sort((a, b) => a - b);
+    const medianMargin = margins.length ? margins[Math.floor(margins.length / 2)] : 50;
 
     state.charts.scatterRevProfit = new Chart(canvas, {
       type: 'scatter',
       data: {
         datasets: [
           {
-            label: '100% Margin Line',
-            data: diagonalData,
+            label: 'Median Margin',
+            data: [{ x: 0, y: medianMargin }, { x: maxPrice, y: medianMargin }],
             type: 'line',
-            borderColor: 'rgba(139, 148, 158, 0.3)',
+            borderColor: 'rgba(139, 148, 158, 0.4)',
             borderDash: [6, 4],
             borderWidth: 1.5,
             pointRadius: 0,
@@ -3074,12 +3077,13 @@
               label: function(ctx) {
                 const d = ctx.raw;
                 return [
-                  `Listing #${d.num}`,
-                  `Revenue: ${formatUSD(d.x)}/mo`,
-                  `Profit: ${formatUSD(d.y)}/mo`,
-                  `Margin: ${d.margin.toFixed(1)}%`,
-                  `Price: ${formatUSD(d.price)}`,
-                  `(click to open)`
+                  'Listing #' + d.num + ' — ' + d.niche,
+                  'Price: ' + formatUSD(d.x),
+                  'Margin: ' + d.y.toFixed(1) + '%',
+                  'Profit: ' + formatUSD(d.profit) + '/mo',
+                  'Revenue: ' + formatUSD(d.revenue) + '/mo',
+                  'Multiple: ' + d.multiple.toFixed(1) + 'x',
+                  '(click to open)'
                 ];
               }
             }
@@ -3087,20 +3091,21 @@
         },
         scales: {
           x: {
-            title: { display: true, text: 'Monthly Revenue', color: '#8b949e', font: { size: 13 } },
-            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
+            title: { display: true, text: 'Listing Price', color: '#8b949e', font: { size: 13 } },
+            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
             grid: { color: 'rgba(45,49,72,0.4)' },
             min: 0,
           },
           y: {
-            title: { display: true, text: 'Monthly Profit', color: '#8b949e', font: { size: 13 } },
-            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
+            title: { display: true, text: 'Profit Margin %', color: '#8b949e', font: { size: 13 } },
+            ticks: { color: '#8b949e', callback: function(v) { return v + '%'; } },
             grid: { color: 'rgba(45,49,72,0.4)' },
             min: 0,
+            max: 100,
           }
         },
         onClick: function(evt, elements) {
-          const pts = elements.filter(e => e.datasetIndex === 1);
+          const pts = elements.filter(function(e) { return e.datasetIndex === 1; });
           if (pts.length > 0) {
             const d = filtered[pts[0].index];
             window.open('https://empireflippers.com/listing/' + d.num, '_blank');
