@@ -5644,7 +5644,7 @@
   // =====================================================================
   function bindEvents() {
     // Category collapse/expand
-    $$('.category-header[data-collapse]').forEach(header => {
+    $$('[data-collapse]').forEach(header => {
       const bodyId = header.getAttribute('data-collapse');
       const body = $('#' + bodyId);
       if (!body) return;
