@@ -2150,6 +2150,297 @@ a:hover {
 
 .text-success { color: var(--success) !important; }
 .text-danger { color: var(--danger) !important; }
+.text-muted { color: var(--text-muted); }
+
+/* ============================================
+   CATEGORY HEADERS
+   ============================================ */
+
+.category-header {
+  margin-top: 32px;
+  margin-bottom: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  scroll-margin-top: 80px;
+}
+
+.category-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.category-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================
+   TOC GROUPS
+   ============================================ */
+
+.toc-group {
+  margin-bottom: 8px;
+}
+
+.toc-group:last-child {
+  margin-bottom: 0;
+}
+
+.toc-group-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+  margin-top: 2px;
+}
+
+/* ============================================
+   Z-SCORE BADGES
+   ============================================ */
+
+.z-score-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.z-extreme {
+  background: rgba(46, 160, 67, 0.2);
+  color: #4ade80;
+}
+
+.z-strong {
+  background: rgba(46, 160, 67, 0.12);
+  color: var(--success);
+}
+
+.z-mild {
+  background: rgba(210, 153, 34, 0.12);
+  color: var(--warning);
+}
+
+/* ============================================
+   DAYS ON MARKET BADGES
+   ============================================ */
+
+.dom-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.dom-stale {
+  background: rgba(46, 160, 67, 0.15);
+  color: var(--success);
+}
+
+.dom-aging {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.dom-fresh {
+  background: rgba(107, 114, 128, 0.12);
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   COMPARABLE SALES
+   ============================================ */
+
+.comps-card {
+  border-color: rgba(79, 134, 247, 0.2);
+}
+
+.comps-list {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.comps-list-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.comp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--bg-primary);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.comp-row:last-child {
+  border-bottom: none;
+}
+
+.comp-row a {
+  font-weight: 600;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.comp-detail {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+.comp-similarity {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   BUDGET OPTIMIZER
+   ============================================ */
+
+.budget-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.budget-tier {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.budget-tier-header {
+  background: var(--bg-tertiary);
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-tier-amount {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.budget-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.budget-col {
+  padding: 14px 18px;
+}
+
+.budget-col:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.budget-col-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.budget-listing-link {
+  font-weight: 700;
+  font-size: 1rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.budget-niche {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.budget-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.budget-portfolio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.budget-portfolio-item a {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.budget-portfolio-item span {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.budget-portfolio-summary {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   SCATTER CHART
+   ============================================ */
+
+.chart-card-wide {
+  padding: 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.chart-card-wide canvas {
+  height: 400px !important;
+  cursor: pointer;
+}
 
 /* --- Responsive --- */
 /* ============================================
@@ -2372,8 +2663,44 @@ a:hover {
 
   .opp-card,
   .trend-card,
-  .wealth-card {
+  .wealth-card,
+  .forecast-card {
     padding: 14px;
+  }
+
+  /* --- Category headers --- */
+  .category-header {
+    margin-top: 20px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+  }
+
+  .category-title {
+    font-size: 1.1rem;
+  }
+
+  .category-desc {
+    font-size: 0.78rem;
+  }
+
+  /* --- Budget optimizer --- */
+  .budget-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-col:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* --- Scatter chart --- */
+  .chart-card-wide canvas {
+    height: 300px !important;
+  }
+
+  /* --- TOC groups --- */
+  .toc-group {
+    margin-bottom: 6px;
   }
 
   /* --- Charts: taller on mobile for readability --- */

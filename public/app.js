@@ -91,6 +91,11 @@
     nicheGrowthGrid: $('#niche-growth-grid'),
     riskAssessmentTable: $('#risk-assessment-table'),
     passiveIncomeGrid: $('#passive-income-grid'),
+    undervaluedTable: $('#undervalued-table'),
+    arbitrageGrid: $('#arbitrage-grid'),
+    compsGrid: $('#comps-grid'),
+    daysOnMarketTable: $('#days-on-market-table'),
+    budgetTiers: $('#budget-tiers'),
     // Favorites
     favoritesGrid: $('#favorites-grid'),
     favoritesEmpty: $('#favorites-empty'),
@@ -1276,6 +1281,13 @@
       ['NicheGrowth', () => renderNicheGrowth(forSale, sold, md)],
       ['RiskAssessment', () => renderRiskAssessment(forSale, md)],
       ['PassiveIncome', () => renderPassiveIncome(forSale, md)],
+      ['Undervalued', () => renderUndervalued(forSale, md)],
+      ['Arbitrage', () => renderArbitrage(forSale, sold, md)],
+      ['Comps', () => renderComps(forSale, sold, md)],
+      ['DaysOnMarket', () => renderDaysOnMarket(forSale)],
+      ['BudgetOptimizer', () => renderBudgetOptimizer(forSale, md)],
+      ['ScatterRevProfit', () => renderScatterRevProfit(forSale)],
+      ['Seasonality', () => renderSeasonality(sold)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -2502,6 +2514,521 @@
         </div>
       `;
     }).join('') || '<p class="empty-state">No passive income data available (listings missing hours data).</p>';
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Undervalued Z-Score
+  // =====================================================================
+  function renderUndervalued(forSale, md) {
+    const table = dom.undervaluedTable;
+    if (!table) return;
+
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+
+      const nicheMults = niches.flatMap(n => (md.nicheAcc[n] || { multiple: [] }).multiple);
+      const nichePrices = niches.flatMap(n => (md.nicheAcc[n] || { price: [] }).price);
+
+      const meanMult = robustAvg(nicheMults);
+      const stdMult = stdDev(nicheMults);
+      const meanPrice = robustAvg(nichePrices);
+      const stdPrice = stdDev(nichePrices);
+
+      const zMult = stdMult > 0 && multiple > 0 ? (multiple - meanMult) / stdMult : 0;
+      const zPrice = stdPrice > 0 && price > 0 ? (price - meanPrice) / stdPrice : 0;
+      const zCombo = (zMult + zPrice) / 2;
+
+      const discount = meanMult > 0 && multiple > 0 ? ((meanMult - multiple) / meanMult * 100) : 0;
+
+      return {
+        _name: `#${num}`, _num: num, _niches: niches.join(', '),
+        price, profit, multiple, meanMult, zMult, zPrice, zCombo, discount,
+        annualProfit: profit * 12,
+        n: nicheMults.length,
+      };
+    })
+    .filter(r => r.zCombo < -0.3 && r.profit > 0 && r.n >= 3)
+    .sort((a, b) => a.zCombo - b.zCombo)
+    .slice(0, 40);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: '_niches', label: 'Niche', render: r => escapeHtml(r._niches) },
+      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
+      { key: 'multiple', label: 'Multiple', render: r => formatMultiple(r.multiple) },
+      { key: 'meanMult', label: 'Niche Avg', render: r => formatMultiple(r.meanMult) },
+      { key: 'discount', label: 'Discount', tdClass: 'profit-cell', render: r => `${r.discount > 0 ? '+' : ''}${formatPercent(r.discount)}` },
+      { key: 'zCombo', label: 'Z-Score', render: r => `<span class="z-score-badge ${r.zCombo < -1.5 ? 'z-extreme' : r.zCombo < -0.8 ? 'z-strong' : 'z-mild'}">${r.zCombo.toFixed(2)}</span>` },
+      { key: 'annualProfit', label: 'Annual Profit', tdClass: 'profit-cell', render: r => formatUSD(r.annualProfit) },
+      { key: 'n', label: 'n', render: r => `<span class="confidence-badge ${r.n >= 10 ? 'conf-high' : r.n >= 5 ? 'conf-med' : 'conf-low'}">${r.n}</span>` },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'zCombo', 'asc');
+  }
+
+  function stdDev(arr) {
+    if (arr.length < 2) return 0;
+    const cleaned = removeOutliers(arr);
+    if (cleaned.length < 2) return 0;
+    const mean = cleaned.reduce((a, b) => a + b, 0) / cleaned.length;
+    const variance = cleaned.reduce((sum, v) => sum + (v - mean) ** 2, 0) / cleaned.length;
+    return Math.sqrt(variance);
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Multiple Arbitrage Detector
+  // =====================================================================
+  function renderArbitrage(forSale, sold, md) {
+    const el = dom.arbitrageGrid;
+    if (!el) return;
+
+    // Build sold multiples per niche
+    const nicheSoldMults = {};
+    sold.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      if (mult <= 0) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheSoldMults[n]) nicheSoldMults[n] = [];
+        nicheSoldMults[n].push(mult);
+      });
+    });
+
+    const items = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+
+      const soldMults = niches.flatMap(n => nicheSoldMults[n] || []);
+      const medianSoldMult = median(soldMults);
+
+      if (multiple <= 0 || medianSoldMult <= 0 || soldMults.length < 3) return null;
+
+      const spread = medianSoldMult - multiple;
+      const spreadPct = (spread / multiple) * 100;
+      const impliedValue = profit * medianSoldMult;
+      const arbitrageProfit = impliedValue - price;
+
+      return {
+        listing: l, num, niches, multiple, price, profit,
+        medianSoldMult, spread, spreadPct,
+        impliedValue, arbitrageProfit, n: soldMults.length
+      };
+    })
+    .filter(f => f && f.spread > 0 && f.profit > 0)
+    .sort((a, b) => b.arbitrageProfit - a.arbitrageProfit)
+    .slice(0, 25);
+
+    el.innerHTML = items.map((f, i) => `
+      <div class="forecast-card">
+        <div class="forecast-card-header">
+          <div class="forecast-card-title">
+            <span class="forecast-rank">${i + 1}</span>
+            <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+            <span class="forecast-niche">${f.niches.map(n => escapeHtml(n)).join(', ')}</span>
+          </div>
+          <span class="forecast-badge badge-excellent">+${formatPercent(f.spreadPct)} spread</span>
+        </div>
+        <div class="forecast-metrics">
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Asking Multiple</span>
+            <span class="forecast-metric-value">${formatMultiple(f.multiple)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Median Sold Multiple</span>
+            <span class="forecast-metric-value" style="color:var(--success)">${formatMultiple(f.medianSoldMult)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Asking Price</span>
+            <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Implied Value</span>
+            <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(f.impliedValue)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Arbitrage Profit</span>
+            <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(f.arbitrageProfit)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Sold Comps</span>
+            <span class="forecast-metric-value"><span class="confidence-badge ${f.n >= 10 ? 'conf-high' : f.n >= 5 ? 'conf-med' : 'conf-low'}">${f.n}</span></span>
+          </div>
+        </div>
+      </div>
+    `).join('') || '<p class="empty-state">No arbitrage opportunities found.</p>';
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Comparable Sales
+  // =====================================================================
+  function renderComps(forSale, sold, md) {
+    const el = dom.compsGrid;
+    if (!el) return;
+
+    // Pre-index sold by niche
+    const soldByNiche = {};
+    sold.forEach(l => {
+      getNicheNames(l).forEach(n => {
+        if (!soldByNiche[n]) soldByNiche[n] = [];
+        soldByNiche[n].push(l);
+      });
+    });
+
+    // For top 20 scored active listings, find comps
+    const scored = forSale
+      .map(l => ({ listing: l, ...calculateDealScore(l, md) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 20);
+
+    el.innerHTML = scored.map(item => {
+      const l = item.listing;
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+
+      // Find most similar sold listings (same niche, closest profit)
+      const candidates = niches.flatMap(n => soldByNiche[n] || []);
+      const uniqueMap = new Map();
+      candidates.forEach(c => uniqueMap.set(c.listing_number || c.id, c));
+      const comps = [...uniqueMap.values()]
+        .map(c => {
+          const cProfit = parseFloat(c.average_monthly_net_profit || 0);
+          const cPrice = parseFloat(c.listing_price || 0);
+          const cMult = parseFloat(c.listing_multiple || 0);
+          const similarity = profit > 0 && cProfit > 0 ? 1 - Math.abs(profit - cProfit) / Math.max(profit, cProfit) : 0;
+          return { listing: c, num: c.listing_number || c.id, profit: cProfit, price: cPrice, multiple: cMult, similarity };
+        })
+        .filter(c => c.similarity > 0.3 && c.profit > 0)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 4);
+
+      if (!comps.length) return '';
+
+      const avgCompMult = robustAvg(comps.map(c => c.multiple).filter(m => m > 0));
+      const avgCompPrice = robustAvg(comps.map(c => c.price).filter(p => p > 0));
+      const fairValue = profit > 0 && avgCompMult > 0 ? profit * avgCompMult : 0;
+
+      return `
+        <div class="forecast-card comps-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener">#${escapeHtml(String(num))}</a>
+              <span class="forecast-niche">${niches.map(n => escapeHtml(n)).join(', ')}</span>
+            </div>
+            <span class="forecast-badge ${fairValue > price ? 'badge-excellent' : 'badge-fair'}">${fairValue > price ? 'Below comps' : 'At/above comps'}</span>
+          </div>
+          <div class="comps-subject">
+            <div class="forecast-metrics" style="margin-bottom:10px">
+              <div class="forecast-metric"><span class="forecast-metric-label">Asking</span><span class="forecast-metric-value">${formatUSD(price)}</span></div>
+              <div class="forecast-metric"><span class="forecast-metric-label">Fair Value (comps)</span><span class="forecast-metric-value" style="color:var(--accent)">${formatUSD(fairValue)}</span></div>
+              <div class="forecast-metric"><span class="forecast-metric-label">Asking Multiple</span><span class="forecast-metric-value">${formatMultiple(multiple)}</span></div>
+              <div class="forecast-metric"><span class="forecast-metric-label">Avg Comp Multiple</span><span class="forecast-metric-value">${formatMultiple(avgCompMult)}</span></div>
+            </div>
+          </div>
+          <div class="comps-list">
+            <div class="comps-list-title">Comparable Sold Businesses</div>
+            ${comps.map(c => `
+              <div class="comp-row">
+                <a href="https://empireflippers.com/listing/${escapeHtml(String(c.num))}" target="_blank" rel="noopener">#${escapeHtml(String(c.num))}</a>
+                <span class="comp-detail">Sold at ${formatMultiple(c.multiple)} &bull; ${formatUSD(c.price)} &bull; ${formatUSD(c.profit)}/mo</span>
+                <span class="comp-similarity">${Math.round(c.similarity * 100)}% match</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).filter(Boolean).join('') || '<p class="empty-state">No comparable sales data found.</p>';
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Days on Market
+  // =====================================================================
+  function renderDaysOnMarket(forSale) {
+    const table = dom.daysOnMarketTable;
+    if (!table) return;
+
+    const now = Date.now();
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const listedAt = l.first_listed_at || l.created_at;
+      const daysOnMarket = listedAt ? Math.max(0, Math.round((now - new Date(listedAt).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+      return {
+        _name: `#${num}`, _num: num, _niches: niches.join(', '),
+        price, profit, multiple, daysOnMarket,
+        annualProfit: profit * 12,
+        annualROI: multiple > 0 ? (12 / multiple) * 100 : 0,
+        stale: daysOnMarket > 60,
+      };
+    })
+    .filter(r => r.daysOnMarket > 0 && r.profit > 0)
+    .sort((a, b) => b.daysOnMarket - a.daysOnMarket)
+    .slice(0, 50);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: '_niches', label: 'Niche', render: r => escapeHtml(r._niches) },
+      { key: 'daysOnMarket', label: 'Days Listed', render: r => `<span class="dom-badge ${r.daysOnMarket > 90 ? 'dom-stale' : r.daysOnMarket > 30 ? 'dom-aging' : 'dom-fresh'}">${r.daysOnMarket}d</span>` },
+      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
+      { key: 'profit', label: 'Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.profit) },
+      { key: 'multiple', label: 'Multiple', render: r => formatMultiple(r.multiple) },
+      { key: 'annualROI', label: 'Annual ROI', tdClass: 'roi-cell', render: r => formatPercent(r.annualROI) },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'daysOnMarket', 'desc');
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Budget Optimizer
+  // =====================================================================
+  function renderBudgetOptimizer(forSale, md) {
+    const el = dom.budgetTiers;
+    if (!el) return;
+
+    const budgets = [50000, 100000, 250000, 500000, 1000000];
+    const scored = forSale
+      .map(l => ({ listing: l, ...calculateDealScore(l, md) }))
+      .filter(s => parseFloat(s.listing.listing_price || 0) > 0 && parseFloat(s.listing.average_monthly_net_profit || 0) > 0)
+      .sort((a, b) => b.score - a.score);
+
+    el.innerHTML = budgets.map(budget => {
+      // Best single listing
+      const bestSingle = scored.find(s => parseFloat(s.listing.listing_price) <= budget);
+
+      // Best portfolio (greedy: pick highest-scored that fits remaining budget)
+      const portfolio = [];
+      let remaining = budget;
+      const used = new Set();
+      for (const s of scored) {
+        const p = parseFloat(s.listing.listing_price);
+        const id = s.listing.listing_number || s.listing.id;
+        if (p <= remaining && !used.has(id) && portfolio.length < 3) {
+          portfolio.push(s);
+          remaining -= p;
+          used.add(id);
+        }
+      }
+
+      const totalCost = portfolio.reduce((s, p) => s + parseFloat(p.listing.listing_price), 0);
+      const totalMonthlyProfit = portfolio.reduce((s, p) => s + parseFloat(p.listing.average_monthly_net_profit), 0);
+      const totalAnnualProfit = totalMonthlyProfit * 12;
+      const portfolioROI = totalCost > 0 ? (totalAnnualProfit / totalCost * 100) : 0;
+      const uniqueNiches = new Set(portfolio.flatMap(p => getNicheNames(p.listing)));
+
+      const singlePrice = bestSingle ? parseFloat(bestSingle.listing.listing_price) : 0;
+      const singleProfit = bestSingle ? parseFloat(bestSingle.listing.average_monthly_net_profit) * 12 : 0;
+      const singleROI = singlePrice > 0 ? (singleProfit / singlePrice * 100) : 0;
+
+      return `
+        <div class="budget-tier">
+          <div class="budget-tier-header">
+            <h3 class="budget-tier-amount">${formatUSD(budget)}</h3>
+          </div>
+          <div class="budget-columns">
+            <div class="budget-col">
+              <div class="budget-col-title">Best Single Listing</div>
+              ${bestSingle ? `
+                <a href="https://empireflippers.com/listing/${escapeHtml(String(bestSingle.listing.listing_number || bestSingle.listing.id))}" target="_blank" rel="noopener" class="budget-listing-link">#${escapeHtml(String(bestSingle.listing.listing_number || bestSingle.listing.id))}</a>
+                <span class="budget-niche">${getNicheNames(bestSingle.listing).map(n => escapeHtml(n)).join(', ')}</span>
+                <div class="budget-stats">
+                  <span>Price: ${formatUSD(singlePrice)}</span>
+                  <span>Annual Profit: <strong style="color:var(--success)">${formatUSD(singleProfit)}</strong></span>
+                  <span>ROI: <strong style="color:var(--accent)">${formatPercent(singleROI)}</strong></span>
+                  <span>Score: <strong>${bestSingle.score}/100</strong></span>
+                </div>
+              ` : '<p class="text-muted">No listing fits this budget</p>'}
+            </div>
+            <div class="budget-col">
+              <div class="budget-col-title">Best Portfolio (up to 3)</div>
+              ${portfolio.length ? `
+                ${portfolio.map(p => {
+                  const pNum = p.listing.listing_number || p.listing.id;
+                  return `<div class="budget-portfolio-item">
+                    <a href="https://empireflippers.com/listing/${escapeHtml(String(pNum))}" target="_blank" rel="noopener">#${escapeHtml(String(pNum))}</a>
+                    <span>${formatUSD(parseFloat(p.listing.listing_price))} &bull; ${formatUSD(parseFloat(p.listing.average_monthly_net_profit))}/mo &bull; Score ${p.score}</span>
+                  </div>`;
+                }).join('')}
+                <div class="budget-portfolio-summary">
+                  <span>Total: ${formatUSD(totalCost)} invested</span>
+                  <span>Combined Annual Profit: <strong style="color:var(--success)">${formatUSD(totalAnnualProfit)}</strong></span>
+                  <span>Portfolio ROI: <strong style="color:var(--accent)">${formatPercent(portfolioROI)}</strong></span>
+                  <span>Diversification: <strong>${uniqueNiches.size} niches</strong></span>
+                </div>
+              ` : '<p class="text-muted">No listings fit this budget</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Revenue vs Profit Scatter Plot
+  // =====================================================================
+  function renderScatterRevProfit(forSale) {
+    destroyChart('scatterRevProfit');
+    const canvas = $('#chart-scatter-rev-profit');
+    if (!canvas) return;
+
+    const data = forSale
+      .map(l => {
+        const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
+        const profit = parseFloat(l.average_monthly_net_profit || 0);
+        const price = parseFloat(l.listing_price || 0);
+        const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+        const num = l.listing_number || l.id;
+        if (revenue <= 0 || profit <= 0) return null;
+        return { x: revenue, y: profit, margin, num, price };
+      })
+      .filter(Boolean);
+
+    // Remove outliers for better chart readability
+    const revenues = data.map(d => d.x);
+    const cleanRevenues = removeOutliers(revenues);
+    const maxRev = cleanRevenues.length ? Math.max(...cleanRevenues) * 1.1 : 100000;
+    const filtered = data.filter(d => d.x <= maxRev);
+
+    const colors = filtered.map(d =>
+      d.margin >= 50 ? 'rgba(46, 160, 67, 0.7)' :
+      d.margin >= 30 ? 'rgba(210, 153, 34, 0.7)' :
+      'rgba(218, 54, 51, 0.7)'
+    );
+
+    state.charts.scatterRevProfit = new Chart(canvas, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Listings',
+          data: filtered,
+          backgroundColor: colors,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                const d = ctx.raw;
+                return [
+                  `#${d.num}`,
+                  `Revenue: ${formatUSD(d.x)}/mo`,
+                  `Profit: ${formatUSD(d.y)}/mo`,
+                  `Margin: ${d.margin.toFixed(1)}%`,
+                  `Price: ${formatUSD(d.price)}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Monthly Revenue', color: '#8b949e' },
+            ticks: { color: '#8b949e', callback: v => formatUSD(v) },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          },
+          y: {
+            title: { display: true, text: 'Monthly Profit', color: '#8b949e' },
+            ticks: { color: '#8b949e', callback: v => formatUSD(v) },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          }
+        },
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const d = filtered[idx];
+            window.open('https://empireflippers.com/listing/' + d.num, '_blank');
+          }
+        }
+      }
+    });
+  }
+
+  // =====================================================================
+  //  NEW ANALYSIS: Seasonality Patterns
+  // =====================================================================
+  function renderSeasonality(sold) {
+    destroyChart('seasonalityMultiple');
+    destroyChart('seasonalityVolume');
+
+    const canvasMult = $('#chart-seasonality-multiple');
+    const canvasVol = $('#chart-seasonality-volume');
+    if (!canvasMult && !canvasVol) return;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthData = Array.from({ length: 12 }, () => ({ multiples: [], count: 0, prices: [] }));
+
+    sold.forEach(l => {
+      const soldDate = l.sold_date || l.sold_at || l.updated_at;
+      if (!soldDate) return;
+      const d = new Date(soldDate);
+      if (isNaN(d.getTime())) return;
+      const month = d.getMonth();
+      const mult = parseFloat(l.listing_multiple || 0);
+      const price = parseFloat(l.listing_price || 0);
+      monthData[month].count++;
+      if (mult > 0) monthData[month].multiples.push(mult);
+      if (price > 0) monthData[month].prices.push(price);
+    });
+
+    const avgMults = monthData.map(m => robustAvg(m.multiples));
+    const volumes = monthData.map(m => m.count);
+    const overallAvgMult = robustAvg(avgMults.filter(m => m > 0));
+
+    // Find cheapest months
+    const minMult = Math.min(...avgMults.filter(m => m > 0));
+
+    if (canvasMult) {
+      const barColors = avgMults.map(m => m > 0 && m <= minMult * 1.05 ? 'rgba(46, 160, 67, 0.8)' : 'rgba(79, 134, 247, 0.6)');
+
+      state.charts.seasonalityMultiple = new Chart(canvasMult, {
+        type: 'bar',
+        data: {
+          labels: monthNames,
+          datasets: [{
+            label: 'Avg Sold Multiple',
+            data: avgMults,
+            backgroundColor: barColors,
+            borderRadius: 4,
+          }]
+        },
+        options: vBarOpts({ title: '', yLabel: 'Multiple' })
+      });
+    }
+
+    if (canvasVol) {
+      state.charts.seasonalityVolume = new Chart(canvasVol, {
+        type: 'bar',
+        data: {
+          labels: monthNames,
+          datasets: [{
+            label: 'Sales Volume',
+            data: volumes,
+            backgroundColor: 'rgba(79, 134, 247, 0.6)',
+            borderRadius: 4,
+          }]
+        },
+        options: vBarOpts({ title: '', yLabel: 'Sales Count' })
+      });
+    }
   }
 
   // =====================================================================

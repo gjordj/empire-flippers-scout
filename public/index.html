@@ -56,21 +56,56 @@
       <!-- Table of Contents -->
       <nav class="toc" id="dashboard-toc">
         <div class="toc-title">Jump to Section</div>
-        <div class="toc-links">
-          <a href="#sec-niche-leaderboard" class="toc-link">Niche Leaderboard</a>
-          <a href="#sec-niche-charts" class="toc-link">Niche Charts</a>
-          <a href="#sec-monetization" class="toc-link">Monetization</a>
-          <a href="#sec-opportunities" class="toc-link">Top Opportunities</a>
-          <a href="#sec-distributions" class="toc-link">Distributions</a>
-          <a href="#sec-trends" class="toc-link">Momentum & Trends</a>
-          <a href="#sec-monetization-insights" class="toc-link">Monetization Insights</a>
-          <a href="#sec-wealth" class="toc-link">Wealth Picks</a>
-          <a href="#sec-flip" class="toc-link">Flip Analyzer</a>
-          <a href="#sec-roi" class="toc-link">ROI Projections</a>
-          <a href="#sec-sale-prob" class="toc-link">Sale Probability</a>
-          <a href="#sec-niche-growth" class="toc-link">Niche Growth</a>
-          <a href="#sec-risk" class="toc-link">Risk Assessment</a>
-          <a href="#sec-passive" class="toc-link">Passive Income</a>
+        <div class="toc-group">
+          <span class="toc-group-label">Market Overview</span>
+          <div class="toc-links">
+            <a href="#sec-distributions" class="toc-link">Distributions</a>
+            <a href="#sec-seasonality" class="toc-link">Seasonality</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Sector Intelligence</span>
+          <div class="toc-links">
+            <a href="#sec-niche-leaderboard" class="toc-link">Niche Leaderboard</a>
+            <a href="#sec-niche-charts" class="toc-link">Niche Charts</a>
+            <a href="#sec-niche-growth" class="toc-link">Growth Radar</a>
+            <a href="#sec-trends" class="toc-link">Momentum</a>
+            <a href="#sec-monetization" class="toc-link">Monetization</a>
+            <a href="#sec-monetization-insights" class="toc-link">Monetization Charts</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Deal Discovery</span>
+          <div class="toc-links">
+            <a href="#sec-opportunities" class="toc-link">Top Deals</a>
+            <a href="#sec-undervalued" class="toc-link">Undervalued</a>
+            <a href="#sec-arbitrage" class="toc-link">Arbitrage</a>
+            <a href="#sec-wealth" class="toc-link">Wealth Picks</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Acquisition Playbook</span>
+          <div class="toc-links">
+            <a href="#sec-comps" class="toc-link">Comps</a>
+            <a href="#sec-sale-prob" class="toc-link">Sale Probability</a>
+            <a href="#sec-days-on-market" class="toc-link">Days on Market</a>
+            <a href="#sec-budget" class="toc-link">Budget Optimizer</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Flip & Returns</span>
+          <div class="toc-links">
+            <a href="#sec-flip" class="toc-link">Flip Analyzer</a>
+            <a href="#sec-scatter" class="toc-link">Revenue vs Profit</a>
+            <a href="#sec-roi" class="toc-link">ROI Projections</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Risk & Efficiency</span>
+          <div class="toc-links">
+            <a href="#sec-risk" class="toc-link">Risk Matrix</a>
+            <a href="#sec-passive" class="toc-link">Passive Income</a>
+          </div>
         </div>
       </nav>
 
@@ -98,10 +133,64 @@
         </div>
       </div>
 
-      <!-- Niche Profitability Leaderboard -->
+      <!-- ============================================================ -->
+      <!--  CATEGORY 1: MARKET OVERVIEW                                 -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-market">
+        <h2 class="category-title">Market Overview</h2>
+        <p class="category-desc">High-level snapshot of the Empire Flippers marketplace &mdash; pricing, profit distributions, and timing patterns.</p>
+      </div>
+
+      <div class="dashboard-section" id="sec-distributions">
+        <h2 class="section-title">Market Distributions</h2>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Price Distribution (Active For Sale)</h3>
+            <canvas id="chart-price-dist"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Monthly Profit Distribution (Active For Sale)</h3>
+            <canvas id="chart-profit-dist"></canvas>
+          </div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Multiple Distribution: For Sale vs Sold</h3>
+            <canvas id="chart-multiple-dist"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Niche Count: For Sale vs Sold</h3>
+            <canvas id="chart-niche-dist"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-seasonality">
+        <h2 class="section-title">Seasonality &amp; Timing</h2>
+        <p class="section-subtitle">When do listings sell cheapest? When is the best time to buy? Based on sold listing dates and multiples.</p>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Avg Sold Multiple by Month</h3>
+            <canvas id="chart-seasonality-multiple"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Sales Volume by Month</h3>
+            <canvas id="chart-seasonality-volume"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!--  CATEGORY 2: SECTOR & NICHE INTELLIGENCE                     -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-sectors">
+        <h2 class="category-title">Sector &amp; Niche Intelligence</h2>
+        <p class="category-desc">Which niches and business models are most profitable, growing fastest, and have the strongest buyer demand?</p>
+      </div>
+
       <div class="dashboard-section" id="sec-niche-leaderboard">
-        <h2 class="section-title">&#127919; Sector & Niche Profitability Leaderboard</h2>
-        <p class="section-subtitle">Every niche ranked by avg annual net profit. Averages are computed from <strong>all listings (active + sold)</strong>. "Active" and "Sold" columns show listing counts. Click any column header to re-sort.</p>
+        <h2 class="section-title">Niche Profitability Leaderboard</h2>
+        <p class="section-subtitle">Every niche ranked by avg annual net profit. Outlier-resistant averages (IQR). Median for price &amp; multiple. <em>n</em> = sample size confidence. Click column headers to re-sort. Click niche names to browse listings.</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="niche-leaderboard"></table>
@@ -109,22 +198,38 @@
         </div>
       </div>
 
-      <!-- Niche financials charts -->
       <div class="charts-row" id="sec-niche-charts">
         <div class="chart-card">
-          <h3>Top 15 Niches by Avg Annual Net Profit (All Listings)</h3>
+          <h3>Top 15 Niches by Avg Annual Net Profit</h3>
           <canvas id="chart-niche-profit-rank"></canvas>
         </div>
         <div class="chart-card">
-          <h3>Top 15 Niches by Annual ROI % (All Listings, min 3)</h3>
+          <h3>Top 15 Niches by Annual ROI % (min 3 samples)</h3>
           <canvas id="chart-niche-roi-rank"></canvas>
         </div>
       </div>
 
-      <!-- Monetization Profitability Table -->
+      <div class="dashboard-section" id="sec-niche-growth">
+        <h2 class="section-title">Niche Growth Radar</h2>
+        <p class="section-subtitle">Health score (0-100) combining demand ratio, profitability, volume, and ROI. Green = growing, red = declining.</p>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Niche Health Score (Growth + Demand + Profitability)</h3>
+            <canvas id="chart-niche-health"></canvas>
+          </div>
+        </div>
+        <div class="forecast-grid" id="niche-growth-grid"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-trends">
+        <h2 class="section-title">Niche Momentum &amp; Trends</h2>
+        <p class="section-subtitle">Demand signal: sold vs active supply. "High Demand" = buyers snapping them up faster than sellers list them.</p>
+        <div class="trends-grid" id="trends-grid"></div>
+      </div>
+
       <div class="dashboard-section" id="sec-monetization">
-        <h2 class="section-title">&#128176; Monetization Type Profitability</h2>
-        <p class="section-subtitle">Breakdown by business model (all listings, active + sold). Which monetization types generate the most cash flow and best returns?</p>
+        <h2 class="section-title">Monetization Type Profitability</h2>
+        <p class="section-subtitle">Breakdown by business model. Which monetization types generate the best cash flow and returns?</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="monetization-leaderboard"></table>
@@ -132,47 +237,9 @@
         </div>
       </div>
 
-      <!-- Top Opportunities -->
-      <div class="dashboard-section" id="sec-opportunities">
-        <h2 class="section-title">&#127942; Top 20 Opportunities (Deal Score)</h2>
-        <p class="section-subtitle">Active for-sale listings scored by ROI potential, profit margin, business maturity, work efficiency, niche momentum (from sold data), and price discount vs. market average.</p>
-        <div class="opportunities-grid" id="opportunities-grid"></div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="charts-row" id="sec-distributions">
-        <div class="chart-card">
-          <h3>Niche Count: For Sale vs Sold</h3>
-          <canvas id="chart-niche-dist"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3>Price Distribution (Active For Sale)</h3>
-          <canvas id="chart-price-dist"></canvas>
-        </div>
-      </div>
-
-      <div class="charts-row">
-        <div class="chart-card">
-          <h3>Monthly Profit Distribution (Active For Sale)</h3>
-          <canvas id="chart-profit-dist"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3>Multiple Distribution: For Sale vs Sold</h3>
-          <canvas id="chart-multiple-dist"></canvas>
-        </div>
-      </div>
-
-      <!-- Trend Analysis -->
-      <div class="dashboard-section" id="sec-trends">
-        <h2 class="section-title">&#128200; Niche Momentum & Trends</h2>
-        <p class="section-subtitle">Demand signal from sold listings vs active supply. "High Demand" = more sold than active (buyers are snapping them up). Financials are averages across all listings.</p>
-        <div class="trends-grid" id="trends-grid"></div>
-      </div>
-
-      <!-- Monetization Insights -->
       <div class="dashboard-section" id="sec-monetization-insights">
-        <h2 class="section-title">&#128176; Monetization Insights</h2>
-        <p class="section-subtitle">Average multiples and annual profit by monetization type (all listings). Lower multiples = better value for buyers.</p>
+        <h2 class="section-title">Monetization Charts</h2>
+        <p class="section-subtitle">Visual comparison of multiples and profit by monetization type. Lower multiples = better value.</p>
         <div class="charts-row">
           <div class="chart-card">
             <h3>Avg Multiple by Monetization</h3>
@@ -185,26 +252,103 @@
         </div>
       </div>
 
-      <!-- Wealth Builder Picks -->
+      <!-- ============================================================ -->
+      <!--  CATEGORY 3: DEAL DISCOVERY                                  -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-deals">
+        <h2 class="category-title">Deal Discovery</h2>
+        <p class="category-desc">Find the best acquisition opportunities &mdash; scored, ranked, and filtered for maximum ROI potential.</p>
+      </div>
+
+      <div class="dashboard-section" id="sec-opportunities">
+        <h2 class="section-title">Top Opportunities (Deal Score)</h2>
+        <p class="section-subtitle">Active listings scored on 8 weighted factors: ROI, margin, maturity, efficiency, momentum, pricing, SBA, and trademark.</p>
+        <div class="opportunities-grid" id="opportunities-grid"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-undervalued">
+        <h2 class="section-title">Undervalued Listings (Z-Score)</h2>
+        <p class="section-subtitle">Listings priced significantly below their niche average. Z-score measures how many standard deviations below the mean &mdash; lower = more undervalued.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="undervalued-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-arbitrage">
+        <h2 class="section-title">Multiple Arbitrage Detector</h2>
+        <p class="section-subtitle">Listings where the asking multiple is significantly below what similar businesses <em>actually sold for</em>. The market will pay more than what's being asked.</p>
+        <div class="forecast-grid" id="arbitrage-grid"></div>
+      </div>
+
       <div class="dashboard-section" id="sec-wealth">
-        <h2 class="section-title">&#128142; Wealth Builder Picks</h2>
-        <p class="section-subtitle">Active for-sale listings with the best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
+        <h2 class="section-title">Wealth Builder Picks</h2>
+        <p class="section-subtitle">Best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
         <div class="wealth-picks" id="wealth-picks"></div>
       </div>
 
-      <!-- ==================== FORECASTING & DEEP ANALYSIS ==================== -->
+      <!-- ============================================================ -->
+      <!--  CATEGORY 4: ACQUISITION PLAYBOOK                            -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-playbook">
+        <h2 class="category-title">Acquisition Playbook</h2>
+        <p class="category-desc">Negotiation intel, comparable sales, market timing, and budget planning to execute your acquisition strategy.</p>
+      </div>
 
-      <!-- Flip Opportunity Analyzer -->
+      <div class="dashboard-section" id="sec-comps">
+        <h2 class="section-title">Comparable Sales</h2>
+        <p class="section-subtitle">For each active listing, the most similar sold businesses and what they went for. Like real estate comps &mdash; the best anchor for your offer.</p>
+        <div class="forecast-grid" id="comps-grid"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-sale-prob">
+        <h2 class="section-title">Sale Probability &amp; Negotiation Intel</h2>
+        <p class="section-subtitle">How likely each listing is to sell based on niche demand and pricing vs. sold comps. Use "Est. Fair Value" to anchor your offer.</p>
+        <div class="forecast-grid" id="sale-probability-grid"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-days-on-market">
+        <h2 class="section-title">Days on Market Analysis</h2>
+        <p class="section-subtitle">Listings that have been sitting unsold the longest. Motivated sellers = more negotiation room. Stale listings are your best negotiation leverage.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="days-on-market-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-budget">
+        <h2 class="section-title">Budget Optimizer</h2>
+        <p class="section-subtitle">Best single listing AND best 2-3 listing portfolio at each budget tier. Maximize combined cash flow and diversification.</p>
+        <div class="budget-tiers" id="budget-tiers"></div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!--  CATEGORY 5: FLIP & RETURNS                                  -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-flip">
+        <h2 class="category-title">Flip &amp; Returns</h2>
+        <p class="category-desc">Improvement upside, revenue efficiency, and projected return on investment over time.</p>
+      </div>
+
       <div class="dashboard-section" id="sec-flip">
-        <h2 class="section-title">&#128640; Flip Opportunity Analyzer</h2>
-        <p class="section-subtitle">Businesses with the highest upside if you improve margins to niche average. Sorted by potential annual profit gain &mdash; these are the "buy low, optimize, sell high" plays.</p>
+        <h2 class="section-title">Flip Opportunity Analyzer</h2>
+        <p class="section-subtitle">Businesses with the highest upside if you improve margins to niche top-quartile. The "buy low, optimize, sell high" plays.</p>
         <div class="forecast-grid" id="flip-opportunities"></div>
       </div>
 
-      <!-- ROI Projections -->
+      <div class="dashboard-section" id="sec-scatter">
+        <h2 class="section-title">Revenue vs Profit Efficiency Map</h2>
+        <p class="section-subtitle">Each dot is a listing. High revenue + low profit margin = biggest improvement opportunity. Click any dot to view the listing.</p>
+        <div class="chart-card chart-card-wide">
+          <canvas id="chart-scatter-rev-profit"></canvas>
+        </div>
+      </div>
+
       <div class="dashboard-section" id="sec-roi">
-        <h2 class="section-title">&#128200; ROI &amp; Payback Projections</h2>
-        <p class="section-subtitle">Projected returns at current profit levels, with risk-adjusted estimates. Conservative assumes 20% profit decline, optimistic assumes 30% growth from operational improvements.</p>
+        <h2 class="section-title">ROI &amp; Payback Projections</h2>
+        <p class="section-subtitle">Projected returns at current profit levels. Conservative = -20% profit, Optimistic = +30% growth.</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="roi-projections-table"></table>
@@ -212,30 +356,17 @@
         </div>
       </div>
 
-      <!-- Sale Probability & Negotiation -->
-      <div class="dashboard-section" id="sec-sale-prob">
-        <h2 class="section-title">&#127919; Sale Probability &amp; Negotiation Intel</h2>
-        <p class="section-subtitle">How likely each active listing is to sell based on niche demand, pricing vs. sold comps, and market conditions. Use "Est. Fair Value" to anchor your offer.</p>
-        <div class="forecast-grid" id="sale-probability-grid"></div>
+      <!-- ============================================================ -->
+      <!--  CATEGORY 6: RISK & EFFICIENCY                               -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-risk">
+        <h2 class="category-title">Risk &amp; Efficiency</h2>
+        <p class="category-desc">Evaluate acquisition risk and find the most efficient, passive businesses for portfolio building.</p>
       </div>
 
-      <!-- Niche Growth Radar -->
-      <div class="dashboard-section" id="sec-niche-growth">
-        <h2 class="section-title">&#128161; Niche Growth Radar</h2>
-        <p class="section-subtitle">Which niches are growing vs declining based on sold listing volume trends, average price appreciation, and profit trajectory. Green = growing, red = declining.</p>
-        <div class="charts-row">
-          <div class="chart-card">
-            <h3>Niche Health Score (Growth + Demand + Profitability)</h3>
-            <canvas id="chart-niche-health"></canvas>
-          </div>
-        </div>
-        <div class="forecast-grid" id="niche-growth-grid"></div>
-      </div>
-
-      <!-- Risk Assessment -->
       <div class="dashboard-section" id="sec-risk">
-        <h2 class="section-title">&#9888;&#65039; Risk Assessment Matrix</h2>
-        <p class="section-subtitle">Every active listing scored on 6 risk dimensions. Lower risk score = safer acquisition. Hover for breakdown.</p>
+        <h2 class="section-title">Risk Assessment Matrix</h2>
+        <p class="section-subtitle">Every active listing scored on 6 risk dimensions. Lower total = safer acquisition.</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="risk-assessment-table"></table>
@@ -243,10 +374,9 @@
         </div>
       </div>
 
-      <!-- Efficiency Multiplier -->
       <div class="dashboard-section" id="sec-passive">
-        <h2 class="section-title">&#9201; Passive Income Scorecard</h2>
-        <p class="section-subtitle">Profit per hour worked per week. Find businesses that generate the most cash with the least effort &mdash; ideal for portfolio builders.</p>
+        <h2 class="section-title">Passive Income Scorecard</h2>
+        <p class="section-subtitle">Profit per hour worked per week. Most cash with least effort &mdash; ideal for portfolio builders.</p>
         <div class="forecast-grid" id="passive-income-grid"></div>
       </div>
 
