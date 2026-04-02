@@ -4258,6 +4258,7 @@
     const canvas1 = $('#chart-price-anchoring');
     const canvas2 = $('#chart-multiple-anchoring');
     const summaryEl = $('#anchoring-summary');
+    console.log('Price Anchoring: canvas1=' + !!canvas1 + ' canvas2=' + !!canvas2 + ' summary=' + !!summaryEl + ' forSale=' + forSale.length + ' sold=' + sold.length);
 
     // Group by price range
     const buckets = [
@@ -4298,10 +4299,12 @@
         discount, priceDiscount,
         askCount: askMults.length, soldCount: soldMults.length,
       };
-    }).filter(b => b.askCount >= 2 && b.soldCount >= 2);
+    }).filter(b => b.askCount >= 1 && b.soldCount >= 1);
+
+    console.log('Price Anchoring buckets:', bucketData.map(b => b.label + ': ask=' + b.askCount + ' sold=' + b.soldCount + ' askMult=' + b.medAskMult.toFixed(1) + ' soldMult=' + b.medSoldMult.toFixed(1) + ' disc=' + b.discount.toFixed(1) + '%'));
 
     if (!bucketData.length) {
-      if (summaryEl) summaryEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough data.</p>';
+      if (summaryEl) summaryEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough data to compare asking vs sold prices.</p>';
       return;
     }
 
