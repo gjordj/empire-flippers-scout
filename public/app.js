@@ -1330,11 +1330,11 @@
         ).join('')}</tr></thead>
         <tbody>${sorted.map((row, i) => `<tr>${columns.map(c => {
           if (c.key === '_rank') return `<td>${rankBadge(i)}</td>`;
+          if (c.render) return `<td class="${c.tdClass || ''}">${c.render(row, i, maxMarketVal)}</td>`;
           if (c.key === '_name') {
             if (onNameClick) return `<td class="name-cell"><a href="#" class="browse-name-link" data-name="${escapeHtml(row._name)}">${escapeHtml(row._name)}</a></td>`;
             return `<td class="name-cell">${escapeHtml(row._name)}</td>`;
           }
-          if (c.render) return `<td class="${c.tdClass || ''}">${c.render(row, i, maxMarketVal)}</td>`;
           return `<td>${row[c.key] != null ? row[c.key] : '--'}</td>`;
         }).join('')}</tr>`).join('')}</tbody>
       `;
