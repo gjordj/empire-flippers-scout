@@ -430,7 +430,12 @@
 
       <div class="dashboard-section" id="sec-scatter">
         <h2 class="section-title">Revenue vs Profit Efficiency Map</h2>
-        <p class="section-subtitle">Each dot is a listing. High revenue + low profit margin = biggest improvement opportunity. Click any dot to view the listing.</p>
+        <p class="section-subtitle">Each dot is a listing. Dots near the diagonal line are highly efficient (most revenue becomes profit). Dots far below it have low margins — the biggest improvement opportunities. Click any dot to view.</p>
+        <div class="scatter-legend">
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-green"></span> High margin (&ge;50%)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-yellow"></span> Medium margin (30-50%)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-red"></span> Low margin (&lt;30%)</span>
+        </div>
         <div class="chart-card chart-card-wide">
           <canvas id="chart-scatter-rev-profit"></canvas>
         </div>

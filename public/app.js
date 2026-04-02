@@ -1517,7 +1517,7 @@
     if (!canvas) { console.warn('chart-niche-profit-rank canvas not found'); return; }
 
     const niches = Object.keys(md.nicheAcc)
-      .map(n => ({ name: n, profit: (md.nicheAvgProfit[n] || 0) * 12 }))
+      .map(n => ({ name: n, profit: (md.nicheAvgProfit[n] || 0) * 12, count: md.nicheTotalListings[n] || md.nicheAcc[n].profit.length }))
       .filter(n => n.profit > 0)
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 15);
@@ -1528,7 +1528,7 @@
     state.charts.nicheProfitRank = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: niches.map(n => n.name),
+        labels: niches.map(n => n.name + ' (' + n.count + ')'),
         datasets: [{
           label: 'Avg Annual Net Profit',
           data: niches.map(n => Math.round(n.profit)),
@@ -1541,10 +1541,10 @@
         indexAxis: 'y',
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+          tooltip: { callbacks: { label: function(ctx) { return formatUSD(ctx.raw) + '  (' + niches[ctx.dataIndex].count + ' listings)'; } } },
         },
         scales: {
-          x: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          x: { ticks: { color: '#6a737d', callback: function(v) { return formatUSD(v); } }, grid: { color: 'rgba(45,49,72,0.5)' } },
           y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
@@ -1559,9 +1559,10 @@
     const niches = Object.keys(md.nicheAcc)
       .map(n => {
         const mult = md.nicheAvgMultiple[n] || 0;
-        return { name: n, roi: mult > 0 ? (12 / mult) * 100 : 0 };
+        const count = md.nicheTotalListings[n] || md.nicheAcc[n].multiple.length;
+        return { name: n, roi: mult > 0 ? (12 / mult) * 100 : 0, count: count };
       })
-      .filter(n => n.roi > 0 && (md.nicheTotalListings[n.name] || 0) >= 3)
+      .filter(n => n.roi > 0 && n.count >= 3)
       .sort((a, b) => b.roi - a.roi)
       .slice(0, 15);
 
@@ -1571,7 +1572,7 @@
     state.charts.nicheROIRank = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: niches.map(n => n.name),
+        labels: niches.map(n => n.name + ' (' + n.count + ')'),
         datasets: [{
           label: 'Avg Annual ROI %',
           data: niches.map(n => parseFloat(n.roi.toFixed(1))),
@@ -1584,10 +1585,10 @@
         indexAxis: 'y',
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ctx.raw + '%' } },
+          tooltip: { callbacks: { label: function(ctx) { return ctx.raw + '%  (' + niches[ctx.dataIndex].count + ' listings)'; } } },
         },
         scales: {
-          x: { ticks: { color: '#6a737d', callback: v => v + '%' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          x: { ticks: { color: '#6a737d', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(45,49,72,0.5)' } },
           y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
@@ -1881,11 +1882,13 @@
 
     const monsByMultiple = [...allMons].sort((a, b) => (md.monetizationAvgMultiple[a] || 0) - (md.monetizationAvgMultiple[b] || 0)).slice(0, 12);
     const multipleData = monsByMultiple.map(m => parseFloat((md.monetizationAvgMultiple[m] || 0).toFixed(1)));
+    const multipleCounts = monsByMultiple.map(m => (md.monAcc[m] || {}).multiple ? md.monAcc[m].multiple.length : 0);
+    const multipleLabels = monsByMultiple.map((m, i) => m + ' (' + multipleCounts[i] + ')');
 
     state.charts.monMultiple = new Chart(canvas1, {
       type: 'bar',
       data: {
-        labels: monsByMultiple,
+        labels: multipleLabels,
         datasets: [{
           label: 'Avg Multiple',
           data: multipleData,
@@ -1898,7 +1901,7 @@
         indexAxis: 'y',
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ctx.raw + 'x' } },
+          tooltip: { callbacks: { label: function(ctx) { return ctx.raw + 'x  (' + multipleCounts[ctx.dataIndex] + ' listings)'; } } },
         },
         scales: {
           x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
@@ -1910,11 +1913,13 @@
     const monsByProfit = [...allMons].filter(m => (md.monetizationAvgProfit[m] || 0) > 0)
       .sort((a, b) => (md.monetizationAvgProfit[b] || 0) - (md.monetizationAvgProfit[a] || 0)).slice(0, 12);
     const profitData = monsByProfit.map(m => Math.round((md.monetizationAvgProfit[m] || 0) * 12));
+    const profitCounts = monsByProfit.map(m => (md.monAcc[m] || {}).profit ? md.monAcc[m].profit.length : 0);
+    const profitLabels = monsByProfit.map((m, i) => m + ' (' + profitCounts[i] + ')');
 
     state.charts.monProfit = new Chart(canvas2, {
       type: 'bar',
       data: {
-        labels: monsByProfit,
+        labels: profitLabels,
         datasets: [{
           label: 'Avg Annual Net Profit',
           data: profitData,
@@ -1927,10 +1932,10 @@
         indexAxis: 'y',
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+          tooltip: { callbacks: { label: function(ctx) { return formatUSD(ctx.raw) + '  (' + profitCounts[ctx.dataIndex] + ' listings)'; } } },
         },
         scales: {
-          x: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          x: { ticks: { color: '#6a737d', callback: function(v) { return formatUSD(v); } }, grid: { color: 'rgba(45,49,72,0.5)' } },
           y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
@@ -3007,21 +3012,55 @@
     const filtered = data.filter(d => d.x <= maxRev);
 
     const colors = filtered.map(d =>
-      d.margin >= 50 ? 'rgba(46, 160, 67, 0.7)' :
-      d.margin >= 30 ? 'rgba(210, 153, 34, 0.7)' :
-      'rgba(218, 54, 51, 0.7)'
+      d.margin >= 50 ? 'rgba(46, 160, 67, 0.85)' :
+      d.margin >= 30 ? 'rgba(210, 153, 34, 0.85)' :
+      'rgba(218, 54, 51, 0.85)'
     );
+    const borderColors = filtered.map(d =>
+      d.margin >= 50 ? 'rgba(46, 160, 67, 1)' :
+      d.margin >= 30 ? 'rgba(210, 153, 34, 1)' :
+      'rgba(218, 54, 51, 1)'
+    );
+
+    // Scale dot sizes by price (bigger = more expensive)
+    const prices = filtered.map(d => d.price);
+    const minP = Math.min(...prices) || 1;
+    const maxP = Math.max(...prices) || 1;
+    const sizes = filtered.map(d => {
+      const norm = maxP > minP ? (d.price - minP) / (maxP - minP) : 0.5;
+      return 5 + norm * 12;
+    });
+
+    // Diagonal reference line dataset (100% margin line: profit = revenue)
+    const axisMax = Math.min(maxRev, Math.max(...filtered.map(d => d.y)) * 1.2);
+    const diagonalData = [{ x: 0, y: 0 }, { x: axisMax, y: axisMax }];
 
     state.charts.scatterRevProfit = new Chart(canvas, {
       type: 'scatter',
       data: {
-        datasets: [{
-          label: 'Listings',
-          data: filtered,
-          backgroundColor: colors,
-          pointRadius: 6,
-          pointHoverRadius: 9,
-        }]
+        datasets: [
+          {
+            label: '100% Margin Line',
+            data: diagonalData,
+            type: 'line',
+            borderColor: 'rgba(139, 148, 158, 0.3)',
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            order: 1,
+          },
+          {
+            label: 'Listings',
+            data: filtered,
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            pointRadius: sizes,
+            pointHoverRadius: sizes.map(s => s + 4),
+            order: 0,
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -3029,15 +3068,18 @@
         plugins: {
           legend: { display: false },
           tooltip: {
+            filter: function(item) { return item.datasetIndex === 1; },
             callbacks: {
+              title: function() { return ''; },
               label: function(ctx) {
                 const d = ctx.raw;
                 return [
-                  `#${d.num}`,
+                  `Listing #${d.num}`,
                   `Revenue: ${formatUSD(d.x)}/mo`,
                   `Profit: ${formatUSD(d.y)}/mo`,
                   `Margin: ${d.margin.toFixed(1)}%`,
-                  `Price: ${formatUSD(d.price)}`
+                  `Price: ${formatUSD(d.price)}`,
+                  `(click to open)`
                 ];
               }
             }
@@ -3045,20 +3087,22 @@
         },
         scales: {
           x: {
-            title: { display: true, text: 'Monthly Revenue', color: '#8b949e' },
-            ticks: { color: '#8b949e', callback: v => formatUSD(v) },
-            grid: { color: 'rgba(45,49,72,0.5)' },
+            title: { display: true, text: 'Monthly Revenue', color: '#8b949e', font: { size: 13 } },
+            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
+            grid: { color: 'rgba(45,49,72,0.4)' },
+            min: 0,
           },
           y: {
-            title: { display: true, text: 'Monthly Profit', color: '#8b949e' },
-            ticks: { color: '#8b949e', callback: v => formatUSD(v) },
-            grid: { color: 'rgba(45,49,72,0.5)' },
+            title: { display: true, text: 'Monthly Profit', color: '#8b949e', font: { size: 13 } },
+            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
+            grid: { color: 'rgba(45,49,72,0.4)' },
+            min: 0,
           }
         },
         onClick: function(evt, elements) {
-          if (elements.length > 0) {
-            const idx = elements[0].index;
-            const d = filtered[idx];
+          const pts = elements.filter(e => e.datasetIndex === 1);
+          if (pts.length > 0) {
+            const d = filtered[pts[0].index];
             window.open('https://empireflippers.com/listing/' + d.num, '_blank');
           }
         }
