@@ -33,7 +33,7 @@
 
   <!-- ==================== DASHBOARD TAB ==================== -->
   <section class="tab-content active" id="tab-dashboard">
-    <div class="dashboard-prompt" id="dashboard-prompt">
+    <div class="dashboard-prompt hidden" id="dashboard-prompt">
       <div class="prompt-icon">&#128202;</div>
       <h2>Load Full Analysis to Discover Opportunities</h2>
       <p>Click "Load Full Analysis" to fetch all active and sold listings from Empire Flippers. The system will analyze trends, score deals, and identify the best acquisition opportunities.</p>
@@ -42,7 +42,16 @@
       </button>
     </div>
 
+    <!-- Update available banner -->
+    <div class="update-banner hidden" id="update-banner">
+      <span class="update-banner-text" id="update-banner-text">New listings detected since last load.</span>
+      <button class="btn btn-sm btn-accent" id="btn-refresh-data">Refresh Data</button>
+      <button class="btn btn-sm btn-ghost update-banner-dismiss" id="btn-dismiss-update">&times;</button>
+    </div>
+
     <div class="dashboard hidden" id="dashboard">
+      <!-- Last updated indicator -->
+      <div class="last-updated" id="last-updated"></div>
       <!-- Stats Row -->
       <div class="stats-bar">
         <div class="stat-card">

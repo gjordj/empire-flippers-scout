@@ -104,6 +104,68 @@
   };
 
   // =====================================================================
+  //  INDEXEDDB PERSISTENCE
+  // =====================================================================
+  const DB_NAME = 'ef-scout-db';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'dashboard';
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbPut(key, value) {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(value, key);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      });
+    } catch (err) {
+      console.warn('IndexedDB put failed:', err);
+    }
+  }
+
+  async function dbGet(key) {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const req = tx.objectStore(STORE_NAME).get(key);
+        req.onsuccess = () => { db.close(); resolve(req.result); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      });
+    } catch (err) {
+      console.warn('IndexedDB get failed:', err);
+      return null;
+    }
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  // =====================================================================
   //  FORMATTERS
   // =====================================================================
   function formatUSD(n) {
@@ -932,33 +994,126 @@
   // =====================================================================
   //  DASHBOARD
   // =====================================================================
-  async function loadDashboard() {
-    dom.dashboardPrompt.classList.add('hidden');
-    dom.dashboard.classList.add('hidden');
-    dom.dashboardLoading.classList.remove('hidden');
+  async function loadDashboard(opts = {}) {
+    const { silent } = opts; // silent = background refresh, no loading UI
+    if (!silent) {
+      dom.dashboardPrompt.classList.add('hidden');
+      dom.dashboard.classList.add('hidden');
+      dom.dashboardLoading.classList.remove('hidden');
+      dom.dashboardLoadingText.textContent = 'Fetching all listings from Empire Flippers...';
+    }
 
     try {
-      dom.dashboardLoadingText.textContent = 'Fetching all listings from Empire Flippers...';
       const data = await apiGet('/api/dashboard-data');
       state.dashboardData = data;
       state.marketData = computeMarketData(data.forSale || [], data.sold || []);
 
-      dom.dashboardLoading.classList.add('hidden');
+      // Persist to IndexedDB
+      await dbPut('dashboardData', data);
+      console.log('Dashboard data saved to IndexedDB');
+
+      if (!silent) {
+        dom.dashboardLoading.classList.add('hidden');
+      }
       dom.dashboard.classList.remove('hidden');
+      hideUpdateBanner();
 
       renderDashboard();
       showToast(`Loaded ${(data.forSale || []).length} active + ${(data.sold || []).length} sold listings.`, 'success');
     } catch (err) {
-      dom.dashboardLoading.classList.add('hidden');
-      dom.dashboardPrompt.classList.remove('hidden');
+      if (!silent) {
+        dom.dashboardLoading.classList.add('hidden');
+        // If we have cached data, show that; otherwise show prompt
+        if (state.dashboardData) {
+          dom.dashboard.classList.remove('hidden');
+        } else {
+          dom.dashboardPrompt.classList.remove('hidden');
+        }
+      }
       console.error('Dashboard load error:', err);
       showToast('Failed to load dashboard data. ' + err.message, 'error');
     }
   }
 
+  async function loadDashboardFromCache() {
+    try {
+      const cached = await dbGet('dashboardData');
+      if (cached && cached.forSale && cached.forSale.length > 0) {
+        console.log(`Loaded ${cached.forSale.length} active + ${cached.sold.length} sold from IndexedDB (cached ${timeAgo(cached.fetchedAt)})`);
+        state.dashboardData = cached;
+        state.marketData = computeMarketData(cached.forSale || [], cached.sold || []);
+
+        dom.dashboardPrompt.classList.add('hidden');
+        dom.dashboardLoading.classList.add('hidden');
+        dom.dashboard.classList.remove('hidden');
+        renderDashboard();
+        return true;
+      }
+    } catch (err) {
+      console.warn('Failed to load from IndexedDB:', err);
+    }
+    return false;
+  }
+
+  async function checkForNewListings() {
+    if (!state.dashboardData) return;
+    try {
+      const check = await apiGet('/api/listings/check');
+      const cachedForSaleCount = (state.dashboardData.forSale || []).length;
+      const cachedSoldCount = (state.dashboardData.sold || []).length;
+
+      // Check if counts changed
+      const forSaleDiff = check.forSaleCount - cachedForSaleCount;
+      const soldDiff = check.soldCount - cachedSoldCount;
+
+      // Also check if latest IDs are present in our cache
+      const cachedForSaleIds = new Set((state.dashboardData.forSale || []).map(l => l.listing_number || l.id));
+      const newForSaleIds = (check.latestForSaleIds || []).filter(id => !cachedForSaleIds.has(id));
+
+      if (forSaleDiff !== 0 || soldDiff !== 0 || newForSaleIds.length > 0) {
+        const parts = [];
+        if (forSaleDiff > 0) parts.push(`${forSaleDiff} new active listing${forSaleDiff > 1 ? 's' : ''}`);
+        if (forSaleDiff < 0) parts.push(`${Math.abs(forSaleDiff)} listing${Math.abs(forSaleDiff) > 1 ? 's' : ''} removed/sold`);
+        if (soldDiff > 0) parts.push(`${soldDiff} new sale${soldDiff > 1 ? 's' : ''}`);
+        if (newForSaleIds.length > 0 && forSaleDiff <= 0) parts.push(`${newForSaleIds.length} new listing${newForSaleIds.length > 1 ? 's' : ''}`);
+
+        const msg = parts.length > 0
+          ? `Updates detected: ${parts.join(', ')}.`
+          : 'Listing data may have changed.';
+        showUpdateBanner(msg);
+      } else {
+        console.log('Freshness check: data is up to date.');
+      }
+    } catch (err) {
+      console.warn('Freshness check failed:', err);
+    }
+  }
+
+  function showUpdateBanner(msg) {
+    const banner = $('#update-banner');
+    const text = $('#update-banner-text');
+    if (banner && text) {
+      text.textContent = msg;
+      banner.classList.remove('hidden');
+    }
+  }
+
+  function hideUpdateBanner() {
+    const banner = $('#update-banner');
+    if (banner) banner.classList.add('hidden');
+  }
+
   function renderDashboard() {
-    const { forSale, sold } = state.dashboardData;
+    const { forSale, sold, fetchedAt } = state.dashboardData;
     const md = state.marketData;
+
+    // Last updated indicator
+    const lastUpdatedEl = $('#last-updated');
+    if (lastUpdatedEl && fetchedAt) {
+      const ageMs = Date.now() - new Date(fetchedAt).getTime();
+      const isStale = ageMs > 2 * 60 * 60 * 1000; // >2 hours
+      lastUpdatedEl.innerHTML = `<span class="last-updated-dot ${isStale ? 'stale' : ''}"></span> Data loaded ${timeAgo(fetchedAt)} &bull; ${forSale.length} active + ${sold.length} sold listings`;
+    }
 
     // Stats
     dom.dashActiveCount.textContent = forSale.length.toLocaleString();
@@ -1536,12 +1691,18 @@
       dom.btnToggleFilters.classList.toggle('collapsed');
     });
 
-    // Load dashboard
+    // Load dashboard (force refresh)
     dom.btnLoadDashboard.addEventListener('click', () => {
       switchTab('dashboard');
       loadDashboard();
     });
     dom.btnLoadDashboard2.addEventListener('click', loadDashboard);
+
+    // Update banner: refresh / dismiss
+    const btnRefresh = $('#btn-refresh-data');
+    const btnDismiss = $('#btn-dismiss-update');
+    if (btnRefresh) btnRefresh.addEventListener('click', () => loadDashboard());
+    if (btnDismiss) btnDismiss.addEventListener('click', hideUpdateBanner);
 
     // Export CSV
     dom.btnExportCsv.addEventListener('click', () => exportCSV(state.listings, `ef-listings-${new Date().toISOString().slice(0, 10)}.csv`));
@@ -1623,8 +1784,20 @@
     updateFavBadge();
     updateCompareBadge();
     await fetchConfig();
+
     // Start on dashboard tab
     switchTab('dashboard');
+
+    // Try loading cached dashboard data from IndexedDB
+    const hadCache = await loadDashboardFromCache();
+
+    if (hadCache) {
+      // Data loaded from cache - check for new listings in background
+      setTimeout(() => checkForNewListings(), 2000);
+    } else {
+      // No cached data - show the prompt
+      dom.dashboardPrompt.classList.remove('hidden');
+    }
   }
 
   if (document.readyState === 'loading') {

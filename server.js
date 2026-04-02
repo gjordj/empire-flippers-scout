@@ -183,6 +183,40 @@ app.get("/api/fetch-all", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/listings/check - lightweight freshness check (count + latest IDs)
+// ---------------------------------------------------------------------------
+app.get("/api/listings/check", async (req, res) => {
+  try {
+    const cached = getCached("listings-check");
+    if (cached) return res.json(cached);
+
+    // Fetch just page 1 (1 item) for both statuses to get counts + latest
+    const forSaleRaw = await rateLimitedFetch(
+      `${EF_API_BASE}/listings/list?limit=3&listing_status=For Sale&sort=listing_number&order=DESC`
+    );
+    const soldRaw = await rateLimitedFetch(
+      `${EF_API_BASE}/listings/list?limit=3&listing_status=Sold&sort=listing_number&order=DESC`
+    );
+
+    const fsData = forSaleRaw.data || forSaleRaw;
+    const sdData = soldRaw.data || soldRaw;
+
+    const result = {
+      forSaleCount: fsData.count || 0,
+      soldCount: sdData.count || 0,
+      latestForSaleIds: (fsData.listings || []).map((l) => l.listing_number || l.id),
+      latestSoldIds: (sdData.listings || []).map((l) => l.listing_number || l.id),
+      checkedAt: new Date().toISOString(),
+    };
+    setCache("listings-check", result);
+    res.json(result);
+  } catch (err) {
+    console.error("Error in listings check:", err.message);
+    res.status(err.status || 502).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/dashboard-data - fetch both sold + for-sale data for analytics
 // ---------------------------------------------------------------------------
 app.get("/api/dashboard-data", async (req, res) => {

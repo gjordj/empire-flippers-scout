@@ -249,6 +249,54 @@ a:hover {
   cursor: not-allowed;
 }
 
+/* --- Update Banner --- */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--warning-bg);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.update-banner-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.update-banner-dismiss {
+  padding: 2px 8px !important;
+  font-size: 1.1rem !important;
+  line-height: 1;
+  border: none !important;
+}
+
+/* --- Last Updated --- */
+.last-updated {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 6px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.last-updated-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.last-updated-dot.stale {
+  background: var(--warning);
+}
+
 /* --- Stats Bar --- */
 .stats-bar {
   display: grid;
