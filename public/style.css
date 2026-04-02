@@ -1865,6 +1865,357 @@ a:hover {
   .alpha-card-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* Portfolio Builder */
+.pb-add-row {
+  margin-bottom: 18px;
+  position: relative;
+}
+.pb-search-wrap {
+  position: relative;
+  max-width: 500px;
+}
+.pb-search-wrap .input-text {
+  width: 100%;
+}
+.pb-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.pb-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pb-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+.pb-dropdown-item-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pb-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pb-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
+  grid-column: 1 / -1;
+}
+.pb-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  position: relative;
+}
+.pb-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.pb-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent);
+}
+.pb-card-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.pb-card-remove:hover {
+  color: #ff6b6b;
+}
+.pb-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pb-card-stats span {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.pb-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pb-stat {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.pb-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.pb-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.pb-stat-value.accent { color: var(--accent); }
+.pb-stat-value.success { color: var(--success); }
+.pb-stat-value.warning { color: var(--warning); }
+.pb-stat-value.danger { color: var(--danger); }
+.pb-risk-section {
+  margin-bottom: 20px;
+}
+.pb-risk-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.pb-risk-score {
+  font-size: 28px;
+  font-weight: 700;
+}
+.pb-risk-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.pb-risk-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.pb-risk-bar-wrap {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.pb-risk-bar-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.pb-risk-bar {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pb-risk-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.pb-scenario-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+.pb-scenario-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.pb-scenario-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.pb-scenario-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.pb-scenario-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 12px;
+}
+.pb-scenario-card dt { color: var(--text-secondary); }
+.pb-scenario-card dd { text-align: right; font-weight: 600; color: var(--text-primary); margin: 0; }
+.pb-comparison {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 16px;
+}
+.pb-comparison h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+.pb-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pb-comparison-col {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.pb-comparison-col h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.pb-comparison-col dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 12px;
+}
+.pb-comparison-col dt { color: var(--text-secondary); }
+.pb-comparison-col dd { text-align: right; font-weight: 600; color: var(--text-primary); margin: 0; }
+@media (max-width: 768px) {
+  .pb-cards { grid-template-columns: 1fr; }
+  .pb-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .pb-comparison-grid { grid-template-columns: 1fr; }
+}
+
+/* Portfolio Strategy Guide */
+.pb-strategy {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.pb-strategy-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.pb-strategy-intro {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.pb-strategy-models {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.pb-model-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  border-top: 3px solid var(--border);
+}
+.pb-model-safe { border-top-color: #2ea043; }
+.pb-model-growth { border-top-color: #d29922; }
+.pb-model-exit { border-top-color: #da3633; }
+.pb-model-card h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.pb-model-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(139,148,158,0.15);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.pb-model-safe .pb-model-tag { background: rgba(46,160,67,0.15); color: #2ea043; }
+.pb-model-growth .pb-model-tag { background: rgba(210,153,34,0.15); color: #d29922; }
+.pb-model-exit .pb-model-tag { background: rgba(218,54,51,0.15); color: #da3633; }
+.pb-model-card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.pb-model-card li strong { color: var(--text-primary); }
+.pb-playbook { margin-bottom: 16px; }
+.pb-playbook h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+.pb-playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.pb-playbook-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.pb-playbook-budget {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.pb-playbook-card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.pb-rule {
+  background: rgba(218,54,51,0.08);
+  border: 1px solid rgba(218,54,51,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.pb-rule strong { color: #f85149; }
+@media (max-width: 768px) {
+  .pb-strategy-models { grid-template-columns: 1fr; }
+  .pb-playbook-grid { grid-template-columns: 1fr; }
+}
+
 /* Smart Money Tracker */
 .smart-money-grid {
   display: grid;

@@ -26,6 +26,8 @@
     favorites: loadFavorites(),
     // Comparison (session only)
     compareIds: new Set(),
+    // Portfolio Builder selections
+    portfolioBuilder: [],
     // Chart instances
     charts: {},
   };
@@ -1289,6 +1291,7 @@
     // Each render wrapped in try/catch so one failure doesn't break the rest
     const renders = [
       ['AlphaOpportunities', () => renderAlphaOpportunities(forSale, sold, md)],
+      ['PortfolioBuilder', () => renderPortfolioBuilder(forSale, md)],
       ['DistributionStats', () => renderDistributionStats(forSale, sold)],
       ['NicheLeaderboard', () => renderNicheLeaderboard(md)],
       ['NicheProfitChart', () => renderNicheProfitChart(md)],
@@ -1707,6 +1710,352 @@
         y: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
       },
     };
+  }
+
+  // =====================================================================
+  //  PORTFOLIO BUILDER
+  // =====================================================================
+  function renderPortfolioBuilder(forSale, md) {
+    var searchInput = $('#pb-search');
+    var dropdown = $('#pb-dropdown');
+    var cardsEl = $('#pb-cards');
+    var emptyEl = $('#pb-empty');
+    var statsRow = $('#pb-stats-row');
+    var chartsRow = $('#pb-charts-row');
+    var riskSection = $('#pb-risk-section');
+    var scenarioSection = $('#pb-scenario-section');
+    var scenarioCards = $('#pb-scenario-cards');
+    var comparisonEl = $('#pb-comparison');
+    if (!searchInput || !cardsEl) return;
+
+    // Build searchable list
+    var allListings = forSale.map(function(l) {
+      return {
+        listing: l,
+        num: l.listing_number || l.id,
+        niches: getNicheNames(l),
+        price: parseFloat(l.listing_price || 0),
+        profit: parseFloat(l.average_monthly_net_profit || 0),
+        revenue: parseFloat(l.average_monthly_gross_revenue || 0),
+        multiple: parseFloat(l.listing_multiple || 0),
+        hours: l.hours_worked_per_week,
+      };
+    }).filter(function(l) { return l.price > 0 && l.profit > 0; });
+
+    function getMonetizations(l) {
+      var m = l.monetization || l.monetizations || [];
+      if (typeof m === 'string') return [m];
+      if (Array.isArray(m)) return m.map(function(x) { return typeof x === 'string' ? x : (x.name || x.type || ''); }).filter(Boolean);
+      return [];
+    }
+
+    // Dropdown search
+    searchInput.addEventListener('input', function() {
+      var q = searchInput.value.toLowerCase().trim();
+      if (q.length < 2) { dropdown.classList.add('hidden'); return; }
+      var matches = allListings.filter(function(l) {
+        var inPortfolio = state.portfolioBuilder.some(function(p) { return (p.listing_number || p.id) === (l.listing.listing_number || l.listing.id); });
+        if (inPortfolio) return false;
+        return (String(l.num).includes(q) || l.niches.join(' ').toLowerCase().includes(q));
+      }).slice(0, 8);
+      if (!matches.length) { dropdown.classList.add('hidden'); return; }
+      dropdown.innerHTML = matches.map(function(m) {
+        return '<div class="pb-dropdown-item" data-num="' + escapeHtml(String(m.num)) + '">' +
+          '<strong>#' + escapeHtml(String(m.num)) + '</strong> — ' + escapeHtml(m.niches.join(', ')) +
+          '<div class="pb-dropdown-item-meta">' + formatUSD(m.price) + ' · ' + formatUSD(m.profit) + '/mo · ' + m.multiple.toFixed(1) + 'x</div>' +
+        '</div>';
+      }).join('');
+      dropdown.classList.remove('hidden');
+    });
+
+    dropdown.addEventListener('click', function(e) {
+      var item = e.target.closest('.pb-dropdown-item');
+      if (!item) return;
+      var num = item.getAttribute('data-num');
+      var match = allListings.find(function(l) { return String(l.num) === num; });
+      if (match) {
+        state.portfolioBuilder.push(match.listing);
+        searchInput.value = '';
+        dropdown.classList.add('hidden');
+        updatePortfolio();
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.pb-search-wrap')) dropdown.classList.add('hidden');
+    });
+
+    function removeListing(num) {
+      state.portfolioBuilder = state.portfolioBuilder.filter(function(l) { return (l.listing_number || l.id) !== num; });
+      updatePortfolio();
+    }
+
+    // Make remove accessible
+    cardsEl.addEventListener('click', function(e) {
+      var btn = e.target.closest('.pb-card-remove');
+      if (btn) removeListing(btn.getAttribute('data-num'));
+    });
+
+    function updatePortfolio() {
+      var items = state.portfolioBuilder;
+      if (!items.length) {
+        emptyEl && (emptyEl.style.display = '');
+        statsRow.innerHTML = '';
+        if (chartsRow) chartsRow.style.display = 'none';
+        if (riskSection) riskSection.style.display = 'none';
+        if (scenarioSection) scenarioSection.style.display = 'none';
+        if (comparisonEl) comparisonEl.style.display = 'none';
+        destroyChart('pbNichePie'); destroyChart('pbMonPie'); destroyChart('pbScenario');
+        cardsEl.innerHTML = '<p class="pb-empty" id="pb-empty">Add listings above to start building your portfolio.</p>';
+        return;
+      }
+
+      // Render cards
+      cardsEl.innerHTML = items.map(function(l) {
+        var num = l.listing_number || l.id;
+        var niches = getNicheNames(l);
+        var price = parseFloat(l.listing_price || 0);
+        var profit = parseFloat(l.average_monthly_net_profit || 0);
+        var multiple = parseFloat(l.listing_multiple || 0);
+        var risk = calculateRisk(l, md);
+        return '<div class="pb-card">' +
+          '<div class="pb-card-header">' +
+            '<div class="pb-card-title"><a href="https://empireflippers.com/listing/' + escapeHtml(String(num)) + '" target="_blank">#' + escapeHtml(String(num)) + '</a> — ' + escapeHtml(niches.join(', ')) + '</div>' +
+            '<button class="pb-card-remove" data-num="' + escapeHtml(String(num)) + '">&times;</button>' +
+          '</div>' +
+          '<div class="pb-card-stats">' +
+            '<span>' + formatUSD(price) + '</span>' +
+            '<span>' + formatUSD(profit) + '/mo</span>' +
+            '<span>' + multiple.toFixed(1) + 'x</span>' +
+            '<span>Risk: ' + risk.total + '/100</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Combined stats
+      var totalCost = 0, totalProfit = 0, totalRevenue = 0, totalHours = 0, hourCount = 0;
+      items.forEach(function(l) {
+        totalCost += parseFloat(l.listing_price || 0);
+        totalProfit += parseFloat(l.average_monthly_net_profit || 0);
+        totalRevenue += parseFloat(l.average_monthly_gross_revenue || 0);
+        var h = l.hours_worked_per_week;
+        if (h != null && h >= 0) { totalHours += h; hourCount++; }
+      });
+      var avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100) : 0;
+      var portfolioMultiple = totalProfit > 0 ? (totalCost / totalProfit) : 0;
+      var annualROI = portfolioMultiple > 0 ? (12 / portfolioMultiple * 100) : 0;
+      var paybackMonths = totalProfit > 0 ? Math.round(totalCost / totalProfit) : 0;
+
+      statsRow.innerHTML =
+        '<div class="pb-stat"><div class="pb-stat-label">Total Cost</div><div class="pb-stat-value">' + formatUSD(totalCost) + '</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Monthly Profit</div><div class="pb-stat-value success">' + formatUSD(totalProfit) + '</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Annual Profit</div><div class="pb-stat-value success">' + formatUSD(totalProfit * 12) + '</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Weighted Multiple</div><div class="pb-stat-value">' + portfolioMultiple.toFixed(1) + 'x</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Avg Margin</div><div class="pb-stat-value">' + avgMargin.toFixed(0) + '%</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Annual ROI</div><div class="pb-stat-value accent">' + annualROI.toFixed(0) + '%</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Payback</div><div class="pb-stat-value">' + paybackMonths + ' mo</div></div>' +
+        '<div class="pb-stat"><div class="pb-stat-label">Total Hours/Wk</div><div class="pb-stat-value">' + (hourCount ? totalHours + 'h' : '?') + '</div></div>';
+
+      // Diversification charts
+      if (chartsRow) chartsRow.style.display = '';
+      destroyChart('pbNichePie'); destroyChart('pbMonPie');
+
+      var nicheCounts = {};
+      var monCounts = {};
+      items.forEach(function(l) {
+        getNicheNames(l).forEach(function(n) { nicheCounts[n] = (nicheCounts[n] || 0) + 1; });
+        getMonetizations(l).forEach(function(m) { monCounts[m] = (monCounts[m] || 0) + 1; });
+      });
+
+      var pieColors = ['#4f86f7','#2ea043','#d29922','#da3633','#8b5cf6','#06b6d4','#f0883e','#ec4899','#64748b','#22d3ee'];
+
+      var nicheCanvas = $('#chart-pb-niche-pie');
+      if (nicheCanvas) {
+        var nicheLabels = Object.keys(nicheCounts);
+        state.charts.pbNichePie = new Chart(nicheCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: nicheLabels,
+            datasets: [{ data: nicheLabels.map(function(n) { return nicheCounts[n]; }), backgroundColor: pieColors.slice(0, nicheLabels.length), borderWidth: 0 }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#8b949e', font: { size: 11 } } } } }
+        });
+      }
+
+      var monCanvas = $('#chart-pb-mon-pie');
+      if (monCanvas) {
+        var monLabels = Object.keys(monCounts);
+        state.charts.pbMonPie = new Chart(monCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: monLabels,
+            datasets: [{ data: monLabels.map(function(m) { return monCounts[m]; }), backgroundColor: pieColors.slice(0, monLabels.length), borderWidth: 0 }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#8b949e', font: { size: 11 } } } } }
+        });
+      }
+
+      // HHI concentration
+      var totalN = Object.values(nicheCounts).reduce(function(a, b) { return a + b; }, 0);
+      var hhi = 0;
+      Object.values(nicheCounts).forEach(function(c) { var s = c / totalN; hhi += s * s; });
+      hhi = Math.round(hhi * 10000);
+      var hhiLabel = hhi >= 5000 ? 'Highly Concentrated (risky)' : hhi >= 2500 ? 'Moderately Concentrated' : 'Well Diversified';
+      var hhiColor = hhi >= 5000 ? 'var(--danger)' : hhi >= 2500 ? 'var(--warning)' : 'var(--success)';
+
+      // Risk
+      if (riskSection) {
+        riskSection.style.display = '';
+        var risks = items.map(function(l) { return calculateRisk(l, md); });
+        var avgRisk = Math.round(risks.reduce(function(s, r) { return s + r.total; }, 0) / risks.length);
+        var riskLabel = avgRisk <= 25 ? 'Low Risk' : avgRisk <= 50 ? 'Moderate Risk' : 'High Risk';
+        var riskColor = avgRisk <= 25 ? 'var(--success)' : avgRisk <= 50 ? 'var(--warning)' : 'var(--danger)';
+        var dims = ['overpricing', 'immaturity', 'lowMargin', 'saturation', 'effort', 'concentration'];
+        var dimLabels = ['Overpricing', 'Immaturity', 'Low Margin', 'Saturation', 'Effort', 'Concentration'];
+        var dimMaxes = [20, 20, 15, 15, 15, 15];
+        var avgDims = dims.map(function(d, i) {
+          return Math.round(risks.reduce(function(s, r) { return s + (r[d] || 0); }, 0) / risks.length);
+        });
+
+        riskSection.innerHTML =
+          '<div class="pb-risk-header">' +
+            '<div class="pb-risk-score" style="color:' + riskColor + '">' + avgRisk + '/100</div>' +
+            '<div class="pb-risk-label" style="color:' + riskColor + '">' + riskLabel + '</div>' +
+            '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:4px">HHI: ' + hhi + ' — <span style="color:' + hhiColor + '">' + hhiLabel + '</span></div>' +
+          '</div>' +
+          '<div class="pb-risk-bars">' +
+            dims.map(function(d, i) {
+              return '<div class="pb-risk-bar-wrap">' +
+                '<div class="pb-risk-bar-label">' + dimLabels[i] + '</div>' +
+                '<div class="pb-risk-bar"><div class="pb-risk-bar-fill" style="width:' + (avgDims[i] / dimMaxes[i] * 100) + '%;background:' + riskColor + '"></div></div>' +
+                '<span style="font-size:0.75rem;color:var(--text-secondary);width:30px;text-align:right">' + avgDims[i] + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>';
+      }
+
+      // Scenario projections
+      if (scenarioSection) {
+        scenarioSection.style.display = '';
+        destroyChart('pbScenario');
+        var scenarios = [
+          { name: 'Conservative', growth: -0.20, color: '#da3633' },
+          { name: 'Base', growth: 0, color: '#d29922' },
+          { name: 'Optimistic', growth: 0.30, color: '#2ea043' },
+        ];
+
+        if (scenarioCards) {
+          scenarioCards.innerHTML = scenarios.map(function(sc) {
+            var moProfit = totalProfit * (1 + sc.growth);
+            var yrProfit = moProfit * 12;
+            var yr3 = yrProfit * 3;
+            var roi3 = totalCost > 0 ? (yr3 / totalCost * 100) : 0;
+            return '<div class="pb-scenario-card">' +
+              '<h4 style="color:' + sc.color + '">' + sc.name + ' (' + (sc.growth >= 0 ? '+' : '') + (sc.growth * 100).toFixed(0) + '%)</h4>' +
+              '<dl>' +
+                '<dt>Monthly Cash Flow</dt><dd>' + formatUSD(moProfit) + '</dd>' +
+                '<dt>Annual Cash Flow</dt><dd>' + formatUSD(yrProfit) + '</dd>' +
+                '<dt>3-Year Total</dt><dd>' + formatUSD(yr3) + '</dd>' +
+                '<dt>3-Year ROI</dt><dd>' + roi3.toFixed(0) + '%</dd>' +
+              '</dl>' +
+            '</div>';
+          }).join('');
+        }
+
+        // Cumulative P&L chart
+        var scenarioCanvas = $('#chart-pb-scenario');
+        if (scenarioCanvas) {
+          var months = [];
+          for (var m = 0; m <= 60; m++) months.push(m);
+          var datasets = scenarios.map(function(sc) {
+            var moProfit = totalProfit * (1 + sc.growth);
+            return {
+              label: sc.name,
+              data: months.map(function(mo) { return Math.round(moProfit * mo - totalCost); }),
+              borderColor: sc.color,
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.3,
+            };
+          });
+          // Break-even line
+          datasets.push({
+            label: 'Break Even',
+            data: months.map(function() { return 0; }),
+            borderColor: 'rgba(139,148,158,0.3)',
+            borderDash: [6, 4],
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: false,
+          });
+          state.charts.pbScenario = new Chart(scenarioCanvas, {
+            type: 'line',
+            data: { labels: months.map(function(m) { return m % 12 === 0 ? 'Y' + (m / 12) : ''; }), datasets: datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#8b949e' } } },
+              scales: {
+                x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.3)' } },
+                y: { ticks: { color: '#6a737d', callback: function(v) { return v >= 1000000 ? '$' + (v / 1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v / 1000).toFixed(0) + 'K' : '$' + v; } }, grid: { color: 'rgba(45,49,72,0.5)' } },
+              },
+            },
+          });
+        }
+      }
+
+      // Comparison vs single best
+      if (comparisonEl && totalCost > 0) {
+        comparisonEl.style.display = '';
+        // Find the single best listing by Alpha logic (highest ROI + lowest risk within budget)
+        var bestSingle = allListings
+          .filter(function(l) { return l.price <= totalCost * 1.1; })
+          .map(function(l) {
+            var ds = calculateDealScore(l.listing, md);
+            var r = calculateRisk(l.listing, md);
+            return { listing: l, dealScore: ds.score, risk: r.total, roi: l.multiple > 0 ? (12 / l.multiple * 100) : 0 };
+          })
+          .sort(function(a, b) { return (b.dealScore - b.risk * 0.3) - (a.dealScore - a.risk * 0.3); })[0];
+
+        if (bestSingle) {
+          var sl = bestSingle.listing;
+          var sProfit = sl.profit;
+          var sROI = bestSingle.roi;
+          var sPayback = sl.multiple > 0 ? Math.round(sl.multiple) : 0;
+          comparisonEl.innerHTML =
+            '<h3 class="pb-comparison h3">Portfolio vs Single Best Investment</h3>' +
+            '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0 0 12px">What if you put all ' + formatUSD(totalCost) + ' into the single highest-scoring listing instead?</p>' +
+            '<div class="pb-comparison-grid">' +
+              '<div class="pb-comparison-col" style="border-color:var(--accent)">' +
+                '<h4 style="color:var(--accent)">Your Portfolio (' + items.length + ' listings)</h4>' +
+                '<dl>' +
+                  '<dt>Total Cost</dt><dd>' + formatUSD(totalCost) + '</dd>' +
+                  '<dt>Monthly Profit</dt><dd>' + formatUSD(totalProfit) + '</dd>' +
+                  '<dt>Annual ROI</dt><dd>' + annualROI.toFixed(0) + '%</dd>' +
+                  '<dt>Payback</dt><dd>' + paybackMonths + ' months</dd>' +
+                  '<dt>Niches</dt><dd>' + Object.keys(nicheCounts).length + '</dd>' +
+                  '<dt>Risk (avg)</dt><dd>' + Math.round(items.map(function(l) { return calculateRisk(l, md).total; }).reduce(function(a, b) { return a + b; }, 0) / items.length) + '/100</dd>' +
+                '</dl>' +
+              '</div>' +
+              '<div class="pb-comparison-col">' +
+                '<h4>Single Best: #' + escapeHtml(String(sl.num)) + '</h4>' +
+                '<dl>' +
+                  '<dt>Price</dt><dd>' + formatUSD(sl.price) + '</dd>' +
+                  '<dt>Monthly Profit</dt><dd>' + formatUSD(sProfit) + '</dd>' +
+                  '<dt>Annual ROI</dt><dd>' + sROI.toFixed(0) + '%</dd>' +
+                  '<dt>Payback</dt><dd>' + sPayback + ' months</dd>' +
+                  '<dt>Niches</dt><dd>1</dd>' +
+                  '<dt>Risk</dt><dd>' + bestSingle.risk + '/100</dd>' +
+                '</dl>' +
+              '</div>' +
+            '</div>';
+        }
+      }
+    }
+
+    // Initial render if items already exist
+    if (state.portfolioBuilder.length > 0) updatePortfolio();
   }
 
   // =====================================================================

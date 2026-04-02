@@ -63,6 +63,12 @@
           </div>
         </div>
         <div class="toc-group">
+          <span class="toc-group-label" style="color:var(--accent)">Portfolio</span>
+          <div class="toc-links">
+            <a href="#sec-portfolio-builder" class="toc-link" style="color:var(--accent);font-weight:700">Portfolio Builder</a>
+          </div>
+        </div>
+        <div class="toc-group">
           <span class="toc-group-label">Market Overview</span>
           <div class="toc-links">
             <a href="#sec-distributions" class="toc-link">Distributions</a>
@@ -172,6 +178,128 @@
         <div class="category-body" id="alpha-grid-wrap">
           <div class="alpha-grid" id="alpha-grid">
             <p style="color:var(--text-secondary);text-align:center;padding:20px">Load Full Analysis to see top picks</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!--  PORTFOLIO BUILDER                                           -->
+      <!-- ============================================================ -->
+      <div class="category-header" id="cat-portfolio-builder" data-collapse="cat-portfolio-builder-body">
+        <h2 class="category-title" style="color:var(--accent)">Portfolio Builder <span class="category-chevron">&#9660;</span></h2>
+        <p class="category-desc">Build a hypothetical portfolio from active listings. Analyze combined stats, diversification, risk, and projected returns.</p>
+      </div>
+      <div class="category-body" id="cat-portfolio-builder-body">
+        <div class="dashboard-section" id="sec-portfolio-builder">
+          <!-- Search / Add row -->
+          <div class="pb-add-row">
+            <div class="pb-search-wrap">
+              <input type="text" id="pb-search" class="input-text" placeholder="Search listings to add..." autocomplete="off">
+              <div class="pb-dropdown hidden" id="pb-dropdown"></div>
+            </div>
+          </div>
+          <!-- Selected listing cards -->
+          <div class="pb-cards" id="pb-cards">
+            <p class="pb-empty" id="pb-empty">Add listings above to start building your portfolio.</p>
+          </div>
+          <!-- Combined stats -->
+          <div class="pb-stats-row" id="pb-stats-row"></div>
+          <!-- Diversification charts -->
+          <div class="charts-row" id="pb-charts-row" style="display:none">
+            <div class="chart-card">
+              <h3>Niche Breakdown</h3>
+              <canvas id="chart-pb-niche-pie"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Monetization Breakdown</h3>
+              <canvas id="chart-pb-mon-pie"></canvas>
+            </div>
+          </div>
+          <!-- Risk assessment -->
+          <div class="pb-risk-section" id="pb-risk-section" style="display:none"></div>
+          <!-- Scenario projections -->
+          <div class="pb-scenario-section" id="pb-scenario-section" style="display:none">
+            <h3 class="pb-scenario-title">Scenario Projections</h3>
+            <div class="pb-scenario-cards" id="pb-scenario-cards"></div>
+            <div class="chart-card" style="margin-top:16px">
+              <h3>Cumulative P&amp;L (5 Years)</h3>
+              <canvas id="chart-pb-scenario"></canvas>
+            </div>
+          </div>
+          <!-- Comparison vs single best -->
+          <div class="pb-comparison" id="pb-comparison" style="display:none"></div>
+
+          <!-- Strategy Guide -->
+          <div class="pb-strategy" id="pb-strategy">
+            <h3 class="pb-strategy-title">Portfolio Strategy Guide</h3>
+            <p class="pb-strategy-intro">A portfolio of 3 businesses at $100K each outperforms one at $300K — you get diversification, multiple learning opportunities, and multiple exit events. One business dying = you're broke. Three businesses, one dies = you lose 33% and recover.</p>
+
+            <div class="pb-strategy-models">
+              <div class="pb-model-card pb-model-safe">
+                <h4>1. Cash Flow Stack <span class="pb-model-tag">Safest</span></h4>
+                <ul>
+                  <li>Buy 3-4 businesses in <strong>different niches and monetizations</strong></li>
+                  <li>Each at $50K-$150K, 25-35x multiple</li>
+                  <li>Target combined $8-15K/mo passive profit</li>
+                  <li>Goal: <strong>Replace your salary, never sell</strong></li>
+                </ul>
+              </div>
+              <div class="pb-model-card pb-model-growth">
+                <h4>2. Flip Ladder <span class="pb-model-tag">Highest Return</span></h4>
+                <ul>
+                  <li>Buy one undervalued business ($50-100K)</li>
+                  <li>Optimize for 6-12 months (margins, automation, traffic)</li>
+                  <li>Sell at higher multiple, reinvest into <strong>TWO</strong> businesses</li>
+                  <li>After 3 cycles: 1 &rarr; 2 &rarr; 4 &rarr; 8 businesses</li>
+                  <li>Goal: <strong>Compound capital fast</strong></li>
+                </ul>
+              </div>
+              <div class="pb-model-card pb-model-exit">
+                <h4>3. Horizontal Roll-Up <span class="pb-model-tag">Biggest Exit</span></h4>
+                <ul>
+                  <li>Buy 3-5 businesses <strong>in the same niche</strong></li>
+                  <li>Merge them: combine email lists, cross-sell, consolidate suppliers</li>
+                  <li>Portfolio doing $50K/mo combined sells at <strong>premium multiple (50-60x)</strong></li>
+                  <li>Goal: <strong>Build a $1M+ exit</strong></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="pb-playbook">
+              <h4>Practical Playbook by Budget</h4>
+              <div class="pb-playbook-grid">
+                <div class="pb-playbook-card">
+                  <div class="pb-playbook-budget">$100K Capital</div>
+                  <ul>
+                    <li>Buy 2 businesses at $40-50K each (30-35x multiples)</li>
+                    <li>Keep $10-20K as operating reserve</li>
+                    <li>Combined profit: $2.5-3.5K/mo</li>
+                    <li>After 12 months: reinvest profits into a 3rd business</li>
+                  </ul>
+                </div>
+                <div class="pb-playbook-card">
+                  <div class="pb-playbook-budget">$300K Capital</div>
+                  <ul>
+                    <li>Buy 3 businesses at $80-100K each, different niches</li>
+                    <li>Combined profit: $7-10K/mo</li>
+                    <li>Improve all three, sell weakest at 18 months</li>
+                    <li>Roll profits into a bigger 4th acquisition</li>
+                  </ul>
+                </div>
+                <div class="pb-playbook-card">
+                  <div class="pb-playbook-budget">$500K+ Capital (SBA)</div>
+                  <ul>
+                    <li>SBA financing: buy $500K-1M business with 10-20% down</li>
+                    <li>Use remaining capital for 2-3 smaller cash businesses</li>
+                    <li>Big one = serious cash flow, small ones = diversification</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="pb-rule">
+              <strong>The One Rule:</strong> Never put more than 40% of your capital in a single business. If one goes wrong — and statistically one will — you survive and the others cover the loss.
+            </div>
           </div>
         </div>
       </div>
