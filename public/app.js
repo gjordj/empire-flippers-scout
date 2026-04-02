@@ -883,6 +883,83 @@
   }
 
   // =====================================================================
+  //  BROWSE BY NICHE / MONETIZATION (from dashboard)
+  // =====================================================================
+  function browseByNiche(nicheName) {
+    // Reset filters, set niche, switch to listings tab, fetch
+    resetFiltersQuiet();
+    state.filters.niches = [nicheName];
+    state.filters.status = 'all';
+    applyFiltersToUI();
+    state.pagination.page = 1;
+    switchTab('listings');
+    fetchListings();
+    showToast(`Filtering by niche: ${nicheName}`, 'success');
+  }
+
+  function browseByMonetization(monName) {
+    resetFiltersQuiet();
+    state.filters.monetizations = [monName];
+    state.filters.status = 'all';
+    applyFiltersToUI();
+    state.pagination.page = 1;
+    switchTab('listings');
+    fetchListings();
+    showToast(`Filtering by monetization: ${monName}`, 'success');
+  }
+
+  // Reset state without fetching or switching tabs
+  function resetFiltersQuiet() {
+    state.filters = {
+      status: 'for_sale', priceMin: null, priceMax: null,
+      profitMin: null, profitMax: null, niches: [], monetizations: [],
+      sortBy: 'listing_number', sortOrder: 'DESC', sba: false, trademark: false,
+    };
+  }
+
+  // Push current filter state into the UI controls
+  function applyFiltersToUI() {
+    const f = state.filters;
+    dom.filterPriceMin.value = f.priceMin || '';
+    dom.filterPriceMax.value = f.priceMax || '';
+    dom.filterProfitMin.value = f.profitMin || '';
+    dom.filterProfitMax.value = f.profitMax || '';
+    dom.filterSortBy.value = f.sortBy;
+    dom.filterSortOrder.value = f.sortOrder;
+    dom.filterSba.checked = f.sba;
+    dom.filterTrademark.checked = f.trademark;
+
+    // Status toggles
+    $$('.toggle-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.status === f.status));
+
+    // Niche multi-select
+    $$('.multi-select-dropdown input[data-prefix="niche"]').forEach(cb => {
+      cb.checked = f.niches.includes(cb.value);
+    });
+    const nicheTxt = dom.nicheTrigger.querySelector('.multi-select-text');
+    if (f.niches.length) {
+      nicheTxt.textContent = f.niches.length <= 2 ? f.niches.join(', ') : `${f.niches.length} selected`;
+      nicheTxt.classList.add('has-selection');
+    } else {
+      nicheTxt.textContent = 'All Niches';
+      nicheTxt.classList.remove('has-selection');
+    }
+
+    // Monetization multi-select
+    $$('.multi-select-dropdown input[data-prefix="monetization"]').forEach(cb => {
+      cb.checked = f.monetizations.includes(cb.value);
+    });
+    const monTxt = dom.monetizationTrigger.querySelector('.multi-select-text');
+    if (f.monetizations.length) {
+      monTxt.textContent = f.monetizations.length <= 2 ? f.monetizations.join(', ') : `${f.monetizations.length} selected`;
+      monTxt.classList.add('has-selection');
+    } else {
+      monTxt.textContent = 'All Types';
+      monTxt.classList.remove('has-selection');
+    }
+  }
+
+  // =====================================================================
   //  MULTI-SELECT
   // =====================================================================
   function populateMultiSelect(dropdown, trigger, items, prefix, defaultText) {
@@ -1155,7 +1232,7 @@
       ['MultipleDistChart', () => renderMultipleDistChart(forSale, sold)],
       ['MonetizationCharts', () => renderMonetizationCharts(forSale, sold, md)],
       ['Trends', () => renderTrends(forSale, sold, md)],
-      ['WealthPicks', () => renderWealthPicks(scored.slice(0, 10), md)],
+      ['WealthPicks', () => renderWealthPicks(scored.slice(0, 60), md)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -1180,7 +1257,7 @@
     return `<span class="leaderboard-rank rank-default">${i + 1}</span>`;
   }
 
-  function buildSortableLeaderboard(tableEl, columns, rows, defaultSortCol, defaultSortDir) {
+  function buildSortableLeaderboard(tableEl, columns, rows, defaultSortCol, defaultSortDir, onNameClick) {
     let sortCol = defaultSortCol;
     let sortDir = defaultSortDir || 'desc';
 
@@ -1198,7 +1275,10 @@
         ).join('')}</tr></thead>
         <tbody>${sorted.map((row, i) => `<tr>${columns.map(c => {
           if (c.key === '_rank') return `<td>${rankBadge(i)}</td>`;
-          if (c.key === '_name') return `<td class="name-cell">${escapeHtml(row._name)}</td>`;
+          if (c.key === '_name') {
+            if (onNameClick) return `<td class="name-cell"><a href="#" class="browse-name-link" data-name="${escapeHtml(row._name)}">${escapeHtml(row._name)}</a></td>`;
+            return `<td class="name-cell">${escapeHtml(row._name)}</td>`;
+          }
           if (c.render) return `<td class="${c.tdClass || ''}">${c.render(row, i, maxMarketVal)}</td>`;
           return `<td>${row[c.key] != null ? row[c.key] : '--'}</td>`;
         }).join('')}</tr>`).join('')}</tbody>
@@ -1214,6 +1294,16 @@
           render();
         });
       });
+
+      // Bind name click for browsing
+      if (onNameClick) {
+        tableEl.querySelectorAll('.browse-name-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            onNameClick(link.dataset.name);
+          });
+        });
+      }
     }
 
     render();
@@ -1270,7 +1360,7 @@
       }},
     ];
 
-    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc');
+    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc', browseByNiche);
   }
 
   function renderMonetizationLeaderboard(md) {
@@ -1318,7 +1408,7 @@
       { key: 'avgPrice', label: 'Avg Asking Price', render: r => formatUSD(r.avgPrice) },
     ];
 
-    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc');
+    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc', browseByMonetization);
   }
 
   function renderNicheProfitChart(md) {
@@ -1707,7 +1797,7 @@
       return `
         <div class="trend-card">
           <div class="trend-card-header">
-            <h4>${escapeHtml(n.name)}</h4>
+            <h4><a href="#" class="browse-niche-link" data-niche="${escapeHtml(n.name)}">${escapeHtml(n.name)}</a></h4>
             <span class="trend-indicator trend-${heat}">${heatLabel}</span>
           </div>
           <div class="trend-stats">
@@ -1720,9 +1810,20 @@
             <div class="trend-stat"><span class="trend-stat-label">Avg Annual ROI</span><span class="trend-stat-value" style="color:var(--accent)">${formatPercent(annualROI)}</span></div>
             <div class="trend-stat"><span class="trend-stat-label">Demand Ratio</span><span class="trend-stat-value">${n.demandRatio.toFixed(1)}x</span></div>
           </div>
+          <div class="trend-card-actions">
+            <a href="#" class="btn btn-sm btn-accent browse-niche-link" data-niche="${escapeHtml(n.name)}">Browse ${n.activeCount} Active Listings</a>
+          </div>
         </div>
       `;
     }).join('');
+
+    // Bind browse links in trend cards
+    dom.trendsGrid.querySelectorAll('.browse-niche-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        browseByNiche(link.dataset.niche);
+      });
+    });
   }
 
   // =====================================================================

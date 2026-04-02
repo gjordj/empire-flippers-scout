@@ -415,6 +415,18 @@ a:hover {
   white-space: nowrap;
 }
 
+.leaderboard-table td.name-cell a.browse-name-link {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.leaderboard-table td.name-cell a.browse-name-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 .leaderboard-table td.profit-cell {
   color: var(--success);
   font-weight: 600;
@@ -657,6 +669,28 @@ a:hover {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.trend-card h4 a.browse-niche-link {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.trend-card h4 a.browse-niche-link:hover {
+  text-decoration: underline;
+  color: var(--accent-hover);
+}
+
+.trend-card-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.trend-card-actions .btn {
+  font-size: 0.75rem;
 }
 
 .trend-indicator {
