@@ -2986,14 +2986,17 @@
   }
 
   // =====================================================================
-  //  MARGIN vs PRICE SCATTER — find high-margin deals at low prices
+  //  BUSINESS EFFICIENCY MAPS — Revenue vs Profit + Margin vs Price
   // =====================================================================
   function renderScatterRevProfit(forSale) {
     destroyChart('scatterRevProfit');
-    const canvas = $('#chart-scatter-rev-profit');
-    if (!canvas) return;
+    destroyChart('scatterMarginPrice');
+    const canvas1 = $('#chart-scatter-rev-profit');
+    const canvas2 = $('#chart-scatter-margin-price');
+    if (!canvas1 && !canvas2) return;
 
-    const data = forSale
+    // Build shared data
+    const allData = forSale
       .map(l => {
         const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
         const profit = parseFloat(l.average_monthly_net_profit || 0);
@@ -3003,116 +3006,192 @@
         const num = l.listing_number || l.id;
         const niche = getNicheNames(l)[0] || 'Unknown';
         if (revenue <= 0 || profit <= 0 || price <= 0) return null;
-        return { x: price, y: margin, num, profit, revenue, multiple, niche };
+        return { revenue, profit, price, multiple, margin, num, niche };
       })
       .filter(Boolean);
 
-    // Remove price outliers
-    const priceVals = data.map(d => d.x);
-    const cleanPrices = removeOutliers(priceVals);
-    const maxPrice = cleanPrices.length ? Math.max(...cleanPrices) * 1.1 : 5000000;
-    const filtered = data.filter(d => d.x <= maxPrice);
+    // Shared color by margin
+    function marginColor(m, alpha) {
+      if (m >= 50) return 'rgba(46, 160, 67, ' + alpha + ')';
+      if (m >= 30) return 'rgba(210, 153, 34, ' + alpha + ')';
+      return 'rgba(218, 54, 51, ' + alpha + ')';
+    }
 
-    // Color by multiple (good deal = low multiple = green)
-    const colors = filtered.map(d =>
-      d.multiple > 0 && d.multiple <= 36 ? 'rgba(46, 160, 67, 0.8)' :
-      d.multiple <= 48 ? 'rgba(210, 153, 34, 0.8)' :
-      'rgba(218, 54, 51, 0.8)'
-    );
-    const borderColors = filtered.map(d =>
-      d.multiple > 0 && d.multiple <= 36 ? 'rgba(46, 160, 67, 1)' :
-      d.multiple <= 48 ? 'rgba(210, 153, 34, 1)' :
-      'rgba(218, 54, 51, 1)'
-    );
+    function scatterTooltip(ctx) {
+      const d = ctx.raw;
+      return [
+        'Listing #' + d.num + ' — ' + d.niche,
+        'Revenue: ' + formatUSD(d.revenue) + '/mo',
+        'Profit: ' + formatUSD(d.profit) + '/mo',
+        'Margin: ' + d.margin.toFixed(1) + '%',
+        'Price: ' + formatUSD(d.price),
+        'Multiple: ' + d.multiple.toFixed(1) + 'x',
+        '(click to open)'
+      ];
+    }
 
-    // Dot size by monthly profit
-    const profits = filtered.map(d => d.profit);
-    const minProf = Math.min(...profits) || 1;
-    const maxProf = Math.max(...profits) || 1;
-    const sizes = filtered.map(d => {
-      const norm = maxProf > minProf ? (d.profit - minProf) / (maxProf - minProf) : 0.5;
-      return 5 + norm * 12;
-    });
-
-    // Median margin reference line
-    const margins = filtered.map(d => d.y).sort((a, b) => a - b);
-    const medianMargin = margins.length ? margins[Math.floor(margins.length / 2)] : 50;
-
-    state.charts.scatterRevProfit = new Chart(canvas, {
-      type: 'scatter',
-      data: {
-        datasets: [
-          {
-            label: 'Median Margin',
-            data: [{ x: 0, y: medianMargin }, { x: maxPrice, y: medianMargin }],
-            type: 'line',
-            borderColor: 'rgba(139, 148, 158, 0.4)',
-            borderDash: [6, 4],
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-            order: 1,
-          },
-          {
-            label: 'Listings',
-            data: filtered,
-            backgroundColor: colors,
-            borderColor: borderColors,
-            borderWidth: 1.5,
-            pointRadius: sizes,
-            pointHoverRadius: sizes.map(s => s + 4),
-            order: 0,
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            filter: function(item) { return item.datasetIndex === 1; },
-            callbacks: {
-              title: function() { return ''; },
-              label: function(ctx) {
-                const d = ctx.raw;
-                return [
-                  'Listing #' + d.num + ' — ' + d.niche,
-                  'Price: ' + formatUSD(d.x),
-                  'Margin: ' + d.y.toFixed(1) + '%',
-                  'Profit: ' + formatUSD(d.profit) + '/mo',
-                  'Revenue: ' + formatUSD(d.revenue) + '/mo',
-                  'Multiple: ' + d.multiple.toFixed(1) + 'x',
-                  '(click to open)'
-                ];
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Listing Price', color: '#8b949e', font: { size: 13 } },
-            ticks: { color: '#8b949e', callback: function(v) { return v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v; } },
-            grid: { color: 'rgba(45,49,72,0.4)' },
-            min: 0,
-          },
-          y: {
-            title: { display: true, text: 'Profit Margin %', color: '#8b949e', font: { size: 13 } },
-            ticks: { color: '#8b949e', callback: function(v) { return v + '%'; } },
-            grid: { color: 'rgba(45,49,72,0.4)' },
-            min: 0,
-            max: 100,
-          }
-        },
-        onClick: function(evt, elements) {
-          const pts = elements.filter(function(e) { return e.datasetIndex === 1; });
-          if (pts.length > 0) {
-            const d = filtered[pts[0].index];
-            window.open('https://empireflippers.com/listing/' + d.num, '_blank');
-          }
+    function scatterClick(filtered) {
+      return function(evt, elements) {
+        var pts = elements.filter(function(e) { return e.datasetIndex === 1; });
+        if (pts.length > 0) {
+          var d = filtered[pts[0].index];
+          window.open('https://empireflippers.com/listing/' + d.num, '_blank');
         }
-      }
-    });
+      };
+    }
+
+    function fmtDollar(v) {
+      return v >= 1000000 ? '$' + (v / 1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v / 1000).toFixed(0) + 'K' : '$' + v;
+    }
+
+    // --- Chart 1: Revenue vs Profit ---
+    if (canvas1) {
+      var revs = allData.map(function(d) { return d.revenue; });
+      var cleanRevs = removeOutliers(revs);
+      var maxRev = cleanRevs.length ? Math.max.apply(null, cleanRevs) * 1.1 : 100000;
+      var f1 = allData.filter(function(d) { return d.revenue <= maxRev; });
+      var d1 = f1.map(function(d) { return { x: d.revenue, y: d.profit, num: d.num, niche: d.niche, margin: d.margin, price: d.price, revenue: d.revenue, profit: d.profit, multiple: d.multiple }; });
+      var c1 = f1.map(function(d) { return marginColor(d.margin, 0.8); });
+      var b1 = f1.map(function(d) { return marginColor(d.margin, 1); });
+
+      // 100% margin diagonal
+      var diagMax = Math.min(maxRev, Math.max.apply(null, f1.map(function(d) { return d.profit; })) * 1.2);
+
+      state.charts.scatterRevProfit = new Chart(canvas1, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: '100% Margin',
+              data: [{ x: 0, y: 0 }, { x: diagMax, y: diagMax }],
+              type: 'line',
+              borderColor: 'rgba(139, 148, 158, 0.3)',
+              borderDash: [6, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              order: 1,
+            },
+            {
+              label: 'Listings',
+              data: d1,
+              backgroundColor: c1,
+              borderColor: b1,
+              borderWidth: 1.5,
+              pointRadius: 6,
+              pointHoverRadius: 10,
+              order: 0,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              filter: function(item) { return item.datasetIndex === 1; },
+              callbacks: { title: function() { return ''; }, label: scatterTooltip }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Monthly Revenue', color: '#8b949e', font: { size: 12 } },
+              ticks: { color: '#8b949e', callback: fmtDollar },
+              grid: { color: 'rgba(45,49,72,0.4)' },
+              min: 0,
+            },
+            y: {
+              title: { display: true, text: 'Monthly Profit', color: '#8b949e', font: { size: 12 } },
+              ticks: { color: '#8b949e', callback: fmtDollar },
+              grid: { color: 'rgba(45,49,72,0.4)' },
+              min: 0,
+            }
+          },
+          onClick: scatterClick(d1)
+        }
+      });
+    }
+
+    // --- Chart 2: Margin vs Price ---
+    if (canvas2) {
+      var pvals = allData.map(function(d) { return d.price; });
+      var cleanP = removeOutliers(pvals);
+      var maxP = cleanP.length ? Math.max.apply(null, cleanP) * 1.1 : 5000000;
+      var f2 = allData.filter(function(d) { return d.price <= maxP; });
+      var d2 = f2.map(function(d) { return { x: d.price, y: d.margin, num: d.num, niche: d.niche, margin: d.margin, price: d.price, revenue: d.revenue, profit: d.profit, multiple: d.multiple }; });
+      var c2 = f2.map(function(d) { return marginColor(d.margin, 0.8); });
+      var b2 = f2.map(function(d) { return marginColor(d.margin, 1); });
+
+      // Sizes by profit
+      var profs = f2.map(function(d) { return d.profit; });
+      var minProf = Math.min.apply(null, profs) || 1;
+      var maxProf = Math.max.apply(null, profs) || 1;
+      var sz = f2.map(function(d) {
+        var norm = maxProf > minProf ? (d.profit - minProf) / (maxProf - minProf) : 0.5;
+        return 5 + norm * 12;
+      });
+
+      // Median margin line
+      var sortedMargins = f2.map(function(d) { return d.margin; }).sort(function(a, b) { return a - b; });
+      var medMargin = sortedMargins.length ? sortedMargins[Math.floor(sortedMargins.length / 2)] : 50;
+
+      state.charts.scatterMarginPrice = new Chart(canvas2, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Median Margin',
+              data: [{ x: 0, y: medMargin }, { x: maxP, y: medMargin }],
+              type: 'line',
+              borderColor: 'rgba(139, 148, 158, 0.4)',
+              borderDash: [6, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              order: 1,
+            },
+            {
+              label: 'Listings',
+              data: d2,
+              backgroundColor: c2,
+              borderColor: b2,
+              borderWidth: 1.5,
+              pointRadius: sz,
+              pointHoverRadius: sz.map(function(s) { return s + 4; }),
+              order: 0,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              filter: function(item) { return item.datasetIndex === 1; },
+              callbacks: { title: function() { return ''; }, label: scatterTooltip }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Listing Price', color: '#8b949e', font: { size: 12 } },
+              ticks: { color: '#8b949e', callback: fmtDollar },
+              grid: { color: 'rgba(45,49,72,0.4)' },
+              min: 0,
+            },
+            y: {
+              title: { display: true, text: 'Profit Margin %', color: '#8b949e', font: { size: 12 } },
+              ticks: { color: '#8b949e', callback: function(v) { return v + '%'; } },
+              grid: { color: 'rgba(45,49,72,0.4)' },
+              min: 0,
+              max: 100,
+            }
+          },
+          onClick: scatterClick(d2)
+        }
+      });
+    }
   }
 
   // =====================================================================

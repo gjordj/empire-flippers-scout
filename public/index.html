@@ -429,15 +429,24 @@
       </div>
 
       <div class="dashboard-section" id="sec-scatter">
-        <h2 class="section-title">Margin vs Price — Deal Finder</h2>
-        <p class="section-subtitle">Find the best deals: top-left = high margin at a low price (sweet spot). Bottom-right = low margin at a high price (avoid). Dot size = monthly profit. Dashed line = median margin. Click any dot to view.</p>
+        <h2 class="section-title">Business Efficiency Maps</h2>
+        <p class="section-subtitle">Two views of every listing. Left: how big and efficient each business is (revenue vs profit). Right: where the best deals hide (margin vs price). Click any dot to open the listing.</p>
         <div class="scatter-legend">
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-green"></span> Low multiple (&le;36x = fast payback)</span>
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-yellow"></span> Medium multiple (36-48x)</span>
-          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-red"></span> High multiple (&gt;48x = slow payback)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-green"></span> High margin (&ge;50%)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-yellow"></span> Medium margin (30-50%)</span>
+          <span class="scatter-legend-item"><span class="scatter-dot scatter-dot-red"></span> Low margin (&lt;30%)</span>
         </div>
-        <div class="chart-card chart-card-wide">
-          <canvas id="chart-scatter-rev-profit"></canvas>
+        <div class="chart-pair">
+          <div class="chart-card chart-card-wide">
+            <h3 class="chart-card-title">Revenue vs Profit</h3>
+            <p class="chart-card-subtitle">Dots near the dashed line keep most of their revenue as profit</p>
+            <canvas id="chart-scatter-rev-profit"></canvas>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <h3 class="chart-card-title">Margin vs Price — Deal Finder</h3>
+            <p class="chart-card-subtitle">Top-left = high margin + low price = sweet spot</p>
+            <canvas id="chart-scatter-margin-price"></canvas>
+          </div>
         </div>
       </div>
 

@@ -2653,6 +2653,27 @@ a:hover {
   cursor: pointer;
 }
 
+/* Chart pair grid */
+.chart-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .chart-pair { grid-template-columns: 1fr; }
+}
+.chart-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+.chart-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
 /* Scatter legend */
 .scatter-legend {
   display: flex;
