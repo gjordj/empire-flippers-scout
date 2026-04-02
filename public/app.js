@@ -1288,6 +1288,7 @@
 
     // Each render wrapped in try/catch so one failure doesn't break the rest
     const renders = [
+      ['AlphaOpportunities', () => renderAlphaOpportunities(forSale, sold, md)],
       ['DistributionStats', () => renderDistributionStats(forSale, sold)],
       ['NicheLeaderboard', () => renderNicheLeaderboard(md)],
       ['NicheProfitChart', () => renderNicheProfitChart(md)],
@@ -1706,6 +1707,164 @@
         y: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
       },
     };
+  }
+
+  // =====================================================================
+  //  GOLDEN OPPORTUNITIES — ALPHA SCORE
+  // =====================================================================
+  function renderAlphaOpportunities(forSale, sold, md) {
+    const grid = $('#alpha-grid');
+    if (!grid) return;
+
+    // Build niche sold speed lookup (avg days to sell)
+    const nicheSoldSpeed = {};
+    sold.forEach(l => {
+      const listedAt = l.first_listed_at || l.created_at;
+      const soldAt = l.sold_date || l.sold_at || l.updated_at;
+      if (!listedAt || !soldAt) return;
+      const days = Math.max(0, Math.round((new Date(soldAt).getTime() - new Date(listedAt).getTime()) / (1000 * 60 * 60 * 24)));
+      if (days > 365) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheSoldSpeed[n]) nicheSoldSpeed[n] = [];
+        nicheSoldSpeed[n].push(days);
+      });
+    });
+    const nicheAvgDays = {};
+    for (var n in nicheSoldSpeed) {
+      nicheAvgDays[n] = nicheSoldSpeed[n].reduce(function(a, b) { return a + b; }, 0) / nicheSoldSpeed[n].length;
+    }
+
+    // Score each for-sale listing
+    var alphaListings = forSale.map(function(l) {
+      var price = parseFloat(l.listing_price || 0);
+      var profit = parseFloat(l.average_monthly_net_profit || 0);
+      var revenue = parseFloat(l.average_monthly_gross_revenue || 0);
+      var multiple = parseFloat(l.listing_multiple || 0);
+      var margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+      var hours = l.hours_worked_per_week;
+      var ageMonths = getAgeMonths(l);
+      var niches = getNicheNames(l);
+      var num = l.listing_number || l.id;
+
+      if (price <= 0 || profit <= 0 || multiple <= 0) return null;
+
+      // 1. ROI Speed (0-20): annual ROI from multiple
+      var annualROI = (12 / multiple) * 100;
+      var roiScore = Math.min(20, annualROI * 0.6);
+
+      // 2. Profit Margin (0-15)
+      var marginScore = Math.min(15, margin * 0.3);
+
+      // 3. Risk (0-20, inverted): lower risk = higher score
+      var risk = calculateRisk(l, md);
+      var riskScore = Math.max(0, 20 - risk.total * 0.2);
+
+      // 4. Moat / Defensibility (0-15, inverted replicability)
+      var replic = calculateReplicability(l, md);
+      var moatScore = Math.min(15, (100 - replic.score) * 0.15);
+
+      // 5. Niche Demand (0-10): how fast similar businesses sell
+      var nicheDays = niches.map(function(nn) { return nicheAvgDays[nn]; }).filter(function(d) { return d != null; });
+      var avgNicheDays = nicheDays.length ? nicheDays.reduce(function(a, b) { return a + b; }, 0) / nicheDays.length : 90;
+      var demandScore = Math.max(0, Math.min(10, (90 - avgNicheDays) * 0.15));
+
+      // 6. Value Gap (0-10): priced below niche median multiple
+      var nicheMultiples = niches.flatMap(function(nn) { return (md.nicheAcc[nn] || { multiple: [] }).multiple; });
+      var nicheMedianMult = median(nicheMultiples);
+      var valueGap = nicheMedianMult > 0 && multiple < nicheMedianMult ? ((nicheMedianMult - multiple) / nicheMedianMult * 100) : 0;
+      var valueScore = Math.min(10, valueGap * 0.5);
+
+      // 7. Passiveness (0-10): low hours worked
+      var passiveScore;
+      if (hours != null && hours >= 0) {
+        passiveScore = Math.max(0, 10 - hours * 0.3);
+      } else {
+        passiveScore = 4;
+      }
+
+      var alpha = Math.min(100, Math.round(roiScore + marginScore + riskScore + moatScore + demandScore + valueScore + passiveScore));
+
+      // Build "why" explanation
+      var reasons = [];
+      if (annualROI >= 30) reasons.push('<strong>' + annualROI.toFixed(0) + '% annual ROI</strong>');
+      if (margin >= 50) reasons.push('<strong>' + margin.toFixed(0) + '% profit margin</strong>');
+      if (valueGap >= 10) reasons.push('<strong>' + valueGap.toFixed(0) + '% below</strong> niche median');
+      if (risk.total <= 30) reasons.push('low risk (' + risk.total + '/100)');
+      if (avgNicheDays <= 45) reasons.push('niche sells fast (' + Math.round(avgNicheDays) + 'd avg)');
+      if (replic.score <= 40) reasons.push('strong moat');
+      if (hours != null && hours <= 10) reasons.push('only ' + hours + ' hrs/wk');
+      if (l.sba_financing_approved) reasons.push('SBA financing');
+
+      return {
+        listing: l, num: num, price: price, profit: profit, revenue: revenue,
+        multiple: multiple, margin: margin, hours: hours, ageMonths: ageMonths,
+        niches: niches, alpha: alpha, annualROI: annualROI,
+        risk: risk, replic: replic,
+        scores: { roi: roiScore, margin: marginScore, risk: riskScore, moat: moatScore, demand: demandScore, value: valueScore, passive: passiveScore },
+        reasons: reasons, avgNicheDays: avgNicheDays, valueGap: valueGap,
+      };
+    }).filter(Boolean).sort(function(a, b) { return b.alpha - a.alpha; }).slice(0, 15);
+
+    if (!alphaListings.length) {
+      grid.innerHTML = '<p style="color:var(--text-secondary);text-align:center">No listings scored yet.</p>';
+      return;
+    }
+
+    // Update best score in stats bar
+    var bestScoreEl = $('#dash-best-score');
+    if (bestScoreEl) bestScoreEl.textContent = alphaListings[0].alpha + '/100';
+
+    grid.innerHTML = alphaListings.map(function(a, i) {
+      var tier = a.alpha >= 70 ? 's' : a.alpha >= 50 ? 'a' : 'b';
+      var tierLabel = a.alpha >= 70 ? 'S-TIER' : a.alpha >= 50 ? 'A-TIER' : 'B-TIER';
+      var bars = [
+        { label: 'ROI', score: a.scores.roi, max: 20, color: '#2ea043' },
+        { label: 'Margin', score: a.scores.margin, max: 15, color: '#58a6ff' },
+        { label: 'Low Risk', score: a.scores.risk, max: 20, color: '#d29922' },
+        { label: 'Moat', score: a.scores.moat, max: 15, color: '#f0883e' },
+        { label: 'Demand', score: a.scores.demand, max: 10, color: '#da3633' },
+        { label: 'Value', score: a.scores.value, max: 10, color: '#8b5cf6' },
+        { label: 'Passive', score: a.scores.passive, max: 10, color: '#06b6d4' },
+      ];
+
+      return '<div class="alpha-card">' +
+        '<span class="alpha-card-rank">#' + (i + 1) + '</span>' +
+        '<div class="alpha-card-top">' +
+          '<div>' +
+            '<div class="alpha-card-name"><a href="https://empireflippers.com/listing/' + escapeHtml(String(a.num)) + '" target="_blank" rel="noopener">#' + escapeHtml(String(a.num)) + '</a></div>' +
+            '<div class="alpha-card-niche">' + escapeHtml(a.niches.join(', ')) + '</div>' +
+          '</div>' +
+          '<div class="alpha-score-badge">' +
+            '<span class="alpha-score-value alpha-score-' + tier + '">' + a.alpha + '</span>' +
+            '<span class="alpha-score-label">' + tierLabel + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="alpha-card-stats">' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + formatUSD(a.price) + '</span><span class="alpha-stat-label">Price</span></div>' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + formatUSD(a.profit) + '/mo</span><span class="alpha-stat-label">Profit</span></div>' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + a.multiple.toFixed(1) + 'x</span><span class="alpha-stat-label">Multiple</span></div>' +
+        '</div>' +
+        '<div class="alpha-card-stats">' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + a.annualROI.toFixed(0) + '%</span><span class="alpha-stat-label">Annual ROI</span></div>' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + a.margin.toFixed(0) + '%</span><span class="alpha-stat-label">Margin</span></div>' +
+          '<div class="alpha-stat"><span class="alpha-stat-value">' + (a.hours != null ? a.hours + 'h' : '?') + '</span><span class="alpha-stat-label">Hrs/Wk</span></div>' +
+        '</div>' +
+        '<div class="alpha-card-bars">' +
+          bars.map(function(b) {
+            return '<div class="alpha-bar-row">' +
+              '<span class="alpha-bar-label">' + b.label + '</span>' +
+              '<div class="alpha-bar-track"><div class="alpha-bar-fill" style="width:' + (b.score / b.max * 100) + '%;background:' + b.color + '"></div></div>' +
+              '<span class="alpha-bar-value">' + Math.round(b.score) + '</span>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+        (a.reasons.length ? '<div class="alpha-card-why">Why: ' + a.reasons.join(' · ') + '</div>' : '') +
+        '<div class="alpha-card-actions">' +
+          '<a class="alpha-btn alpha-btn-primary" href="https://empireflippers.com/listing/' + escapeHtml(String(a.num)) + '" target="_blank" rel="noopener">View Listing</a>' +
+          '<button class="alpha-btn" onclick="window.openListingDeepDive && window.openListingDeepDive(\'' + escapeHtml(String(a.num)) + '\')">Deep Dive</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
 
   function renderDistributionStats(forSale, sold) {
