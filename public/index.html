@@ -169,6 +169,65 @@
         <p class="section-subtitle">Active for-sale listings with the best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
         <div class="wealth-picks" id="wealth-picks"></div>
       </div>
+
+      <!-- ==================== FORECASTING & DEEP ANALYSIS ==================== -->
+
+      <!-- Flip Opportunity Analyzer -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128640; Flip Opportunity Analyzer</h2>
+        <p class="section-subtitle">Businesses with the highest upside if you improve margins to niche average. Sorted by potential annual profit gain &mdash; these are the "buy low, optimize, sell high" plays.</p>
+        <div class="forecast-grid" id="flip-opportunities"></div>
+      </div>
+
+      <!-- ROI Projections -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128200; ROI &amp; Payback Projections</h2>
+        <p class="section-subtitle">Projected returns at current profit levels, with risk-adjusted estimates. Conservative assumes 20% profit decline, optimistic assumes 30% growth from operational improvements.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="roi-projections-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sale Probability & Negotiation -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#127919; Sale Probability &amp; Negotiation Intel</h2>
+        <p class="section-subtitle">How likely each active listing is to sell based on niche demand, pricing vs. sold comps, and market conditions. Use "Est. Fair Value" to anchor your offer.</p>
+        <div class="forecast-grid" id="sale-probability-grid"></div>
+      </div>
+
+      <!-- Niche Growth Radar -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128161; Niche Growth Radar</h2>
+        <p class="section-subtitle">Which niches are growing vs declining based on sold listing volume trends, average price appreciation, and profit trajectory. Green = growing, red = declining.</p>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Niche Health Score (Growth + Demand + Profitability)</h3>
+            <canvas id="chart-niche-health"></canvas>
+          </div>
+        </div>
+        <div class="forecast-grid" id="niche-growth-grid"></div>
+      </div>
+
+      <!-- Risk Assessment -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#9888;&#65039; Risk Assessment Matrix</h2>
+        <p class="section-subtitle">Every active listing scored on 6 risk dimensions. Lower risk score = safer acquisition. Hover for breakdown.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="risk-assessment-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Efficiency Multiplier -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#9201; Passive Income Scorecard</h2>
+        <p class="section-subtitle">Profit per hour worked per week. Find businesses that generate the most cash with the least effort &mdash; ideal for portfolio builders.</p>
+        <div class="forecast-grid" id="passive-income-grid"></div>
+      </div>
+
     </div>
 
     <div class="loading-fullpage hidden" id="dashboard-loading">

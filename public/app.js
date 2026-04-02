@@ -84,6 +84,13 @@
     opportunitiesGrid: $('#opportunities-grid'),
     trendsGrid: $('#trends-grid'),
     wealthPicks: $('#wealth-picks'),
+    // Forecasting
+    flipOpportunities: $('#flip-opportunities'),
+    roiProjectionsTable: $('#roi-projections-table'),
+    saleProbabilityGrid: $('#sale-probability-grid'),
+    nicheGrowthGrid: $('#niche-growth-grid'),
+    riskAssessmentTable: $('#risk-assessment-table'),
+    passiveIncomeGrid: $('#passive-income-grid'),
     // Favorites
     favoritesGrid: $('#favorites-grid'),
     favoritesEmpty: $('#favorites-empty'),
@@ -200,6 +207,34 @@
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // =====================================================================
+  //  STATISTICAL HELPERS (outlier-resistant)
+  // =====================================================================
+
+  function removeOutliers(arr) {
+    if (arr.length < 4) return arr;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+    return arr.filter(v => v >= lower && v <= upper);
+  }
+
+  function robustAvg(arr) {
+    const cleaned = removeOutliers(arr);
+    if (!cleaned.length) return 0;
+    return cleaned.reduce((a, b) => a + b, 0) / cleaned.length;
+  }
+
+  function median(arr) {
+    if (!arr.length) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
   }
 
   // =====================================================================
@@ -348,17 +383,19 @@
       const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
       const price = parseFloat(l.listing_price || 0);
       const isSold = (l.listing_status || '').toLowerCase().includes('sold');
+      const hours = l.hours_worked_per_week;
 
       niches.forEach(n => {
         md.nicheTotalListings[n] = (md.nicheTotalListings[n] || 0) + 1;
         if (isSold) md.nicheSoldCount[n] = (md.nicheSoldCount[n] || 0) + 1;
         else md.nicheActiveCount[n] = (md.nicheActiveCount[n] || 0) + 1;
 
-        if (!md.nicheAcc[n]) md.nicheAcc[n] = { profit: [], revenue: [], multiple: [], price: [] };
+        if (!md.nicheAcc[n]) md.nicheAcc[n] = { profit: [], revenue: [], multiple: [], price: [], hours: [] };
         if (profit > 0) md.nicheAcc[n].profit.push(profit);
         if (revenue > 0) md.nicheAcc[n].revenue.push(revenue);
         if (multiple > 0) md.nicheAcc[n].multiple.push(multiple);
         if (price > 0) md.nicheAcc[n].price.push(price);
+        if (hours != null && hours > 0) md.nicheAcc[n].hours.push(hours);
       });
 
       mons.forEach(m => {
@@ -366,27 +403,27 @@
         if (isSold) md.monetizationSoldCount[m] = (md.monetizationSoldCount[m] || 0) + 1;
         else md.monetizationActiveCount[m] = (md.monetizationActiveCount[m] || 0) + 1;
 
-        if (!md.monAcc[m]) md.monAcc[m] = { profit: [], revenue: [], multiple: [], price: [] };
+        if (!md.monAcc[m]) md.monAcc[m] = { profit: [], revenue: [], multiple: [], price: [], hours: [] };
         if (profit > 0) md.monAcc[m].profit.push(profit);
         if (revenue > 0) md.monAcc[m].revenue.push(revenue);
         if (multiple > 0) md.monAcc[m].multiple.push(multiple);
         if (price > 0) md.monAcc[m].price.push(price);
+        if (hours != null && hours > 0) md.monAcc[m].hours.push(hours);
       });
     });
 
-    function arrAvg(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
-
+    // Use median for price & multiple (heavily skewed), robustAvg for profit/revenue
     for (const [k, v] of Object.entries(md.nicheAcc)) {
-      md.nicheAvgMultiple[k] = arrAvg(v.multiple);
-      md.nicheAvgProfit[k] = arrAvg(v.profit);
-      md.nicheAvgRevenue[k] = arrAvg(v.revenue);
-      md.nicheAvgPrice[k] = arrAvg(v.price);
+      md.nicheAvgMultiple[k] = median(v.multiple);
+      md.nicheAvgProfit[k] = robustAvg(v.profit);
+      md.nicheAvgRevenue[k] = robustAvg(v.revenue);
+      md.nicheAvgPrice[k] = median(v.price);
     }
     for (const [k, v] of Object.entries(md.monAcc)) {
-      md.monetizationAvgMultiple[k] = arrAvg(v.multiple);
-      md.monetizationAvgProfit[k] = arrAvg(v.profit);
-      md.monetizationAvgRevenue[k] = arrAvg(v.revenue);
-      md.monetizationAvgPrice[k] = arrAvg(v.price);
+      md.monetizationAvgMultiple[k] = median(v.multiple);
+      md.monetizationAvgProfit[k] = robustAvg(v.profit);
+      md.monetizationAvgRevenue[k] = robustAvg(v.revenue);
+      md.monetizationAvgPrice[k] = median(v.price);
     }
 
     return md;
@@ -1233,6 +1270,12 @@
       ['MonetizationCharts', () => renderMonetizationCharts(forSale, sold, md)],
       ['Trends', () => renderTrends(forSale, sold, md)],
       ['WealthPicks', () => renderWealthPicks(scored.slice(0, 60), md)],
+      ['FlipOpportunities', () => renderFlipOpportunities(forSale, md)],
+      ['ROIProjections', () => renderROIProjections(scored, md)],
+      ['SaleProbability', () => renderSaleProbability(forSale, sold, md)],
+      ['NicheGrowth', () => renderNicheGrowth(forSale, sold, md)],
+      ['RiskAssessment', () => renderRiskAssessment(forSale, md)],
+      ['PassiveIncome', () => renderPassiveIncome(forSale, md)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -1316,16 +1359,20 @@
     const niches = Object.keys(md.nicheAcc);
     const rows = niches.map(n => {
       const acc = md.nicheAcc[n];
-      const avgProfit = acc.profit.length ? acc.profit.reduce((a, b) => a + b, 0) / acc.profit.length : 0;
-      const avgRevenue = acc.revenue.length ? acc.revenue.reduce((a, b) => a + b, 0) / acc.revenue.length : 0;
-      const avgMultiple = acc.multiple.length ? acc.multiple.reduce((a, b) => a + b, 0) / acc.multiple.length : 0;
-      const avgPrice = acc.price.length ? acc.price.reduce((a, b) => a + b, 0) / acc.price.length : 0;
+      const avgProfit = robustAvg(acc.profit);
+      const avgRevenue = robustAvg(acc.revenue);
+      const avgMultiple = median(acc.multiple);
+      const avgPrice = median(acc.price);
       const margin = avgRevenue > 0 ? (avgProfit / avgRevenue) * 100 : 0;
       const annualROI = avgMultiple > 0 ? (12 / avgMultiple) * 100 : 0;
       const active = md.nicheActiveCount[n] || 0;
       const soldN = md.nicheSoldCount[n] || 0;
       const totalListings = active + soldN;
       const marketValue = avgPrice * active;
+
+      const medHours = median(acc.hours);
+      const profitPerHour = medHours > 0 ? avgProfit / medHours : 0;
+      const paybackYears = avgPrice > 0 && avgProfit > 0 ? avgPrice / (avgProfit * 12) : 0;
 
       return {
         _name: n, _rank: 0,
@@ -1338,6 +1385,9 @@
         avgMultiple,
         avgPrice,
         annualROI,
+        medHours,
+        profitPerHour,
+        paybackYears,
         _marketValue: marketValue,
       };
     }).filter(r => r.totalListings >= 2);
@@ -1351,9 +1401,12 @@
       { key: 'avgMonthlyProfit', label: 'Avg Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgMonthlyProfit) },
       { key: 'avgAnnualRevenue', label: 'Avg Annual Revenue', render: r => formatUSD(r.avgAnnualRevenue) },
       { key: 'avgMargin', label: 'Avg Margin', render: r => formatPercent(r.avgMargin) },
-      { key: 'avgMultiple', label: 'Avg Multiple', render: r => formatMultiple(r.avgMultiple) },
+      { key: 'avgMultiple', label: 'Median Multiple', render: r => formatMultiple(r.avgMultiple) },
       { key: 'annualROI', label: 'Avg Annual ROI', tdClass: 'roi-cell', render: r => formatPercent(r.annualROI) },
-      { key: 'avgPrice', label: 'Avg Asking Price', render: r => formatUSD(r.avgPrice) },
+      { key: 'medHours', label: 'Med. Hrs/Wk', render: r => r.medHours > 0 ? r.medHours.toFixed(0) + 'h' : '--' },
+      { key: 'profitPerHour', label: '$/Hr/Wk', tdClass: 'profit-cell', render: r => r.profitPerHour > 0 ? formatUSD(r.profitPerHour) : '--' },
+      { key: 'paybackYears', label: 'Payback', render: r => r.paybackYears > 0 ? r.paybackYears.toFixed(1) + 'y' : '--' },
+      { key: 'avgPrice', label: 'Median Price', render: r => formatUSD(r.avgPrice) },
       { key: '_marketValue', label: 'Active Market Value', render: (r, i, max) => {
         const barW = max > 0 ? Math.round((r._marketValue / max) * 80) : 0;
         return `${formatUSD(r._marketValue)}<span class="market-value-bar" style="width:${barW}px"></span>`;
@@ -1370,10 +1423,10 @@
     const mons = Object.keys(md.monAcc);
     const rows = mons.map(m => {
       const acc = md.monAcc[m];
-      const avgProfit = acc.profit.length ? acc.profit.reduce((a, b) => a + b, 0) / acc.profit.length : 0;
-      const avgRevenue = acc.revenue.length ? acc.revenue.reduce((a, b) => a + b, 0) / acc.revenue.length : 0;
-      const avgMultiple = acc.multiple.length ? acc.multiple.reduce((a, b) => a + b, 0) / acc.multiple.length : 0;
-      const avgPrice = acc.price.length ? acc.price.reduce((a, b) => a + b, 0) / acc.price.length : 0;
+      const avgProfit = robustAvg(acc.profit);
+      const avgRevenue = robustAvg(acc.revenue);
+      const avgMultiple = median(acc.multiple);
+      const avgPrice = median(acc.price);
       const margin = avgRevenue > 0 ? (avgProfit / avgRevenue) * 100 : 0;
       const annualROI = avgMultiple > 0 ? (12 / avgMultiple) * 100 : 0;
       const active = md.monetizationActiveCount[m] || 0;
@@ -1403,9 +1456,9 @@
       { key: 'avgMonthlyProfit', label: 'Avg Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgMonthlyProfit) },
       { key: 'avgAnnualRevenue', label: 'Avg Annual Revenue', render: r => formatUSD(r.avgAnnualRevenue) },
       { key: 'avgMargin', label: 'Avg Margin', render: r => formatPercent(r.avgMargin) },
-      { key: 'avgMultiple', label: 'Avg Multiple', render: r => formatMultiple(r.avgMultiple) },
+      { key: 'avgMultiple', label: 'Median Multiple', render: r => formatMultiple(r.avgMultiple) },
       { key: 'annualROI', label: 'Avg Annual ROI', tdClass: 'roi-cell', render: r => formatPercent(r.annualROI) },
-      { key: 'avgPrice', label: 'Avg Asking Price', render: r => formatUSD(r.avgPrice) },
+      { key: 'avgPrice', label: 'Median Price', render: r => formatUSD(r.avgPrice) },
     ];
 
     buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc', browseByMonetization);
@@ -1880,6 +1933,573 @@
         </div>
       `;
     }).join('');
+  }
+
+  // =====================================================================
+  //  FORECASTING & DEEP ANALYSIS
+  // =====================================================================
+
+  // --- Risk scoring per listing ---
+  function calculateRisk(listing, md) {
+    const risk = {};
+    const multiple = parseFloat(listing.listing_multiple || 0);
+    const profit = parseFloat(listing.average_monthly_net_profit || 0);
+    const revenue = parseFloat(listing.average_monthly_gross_revenue || 0);
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    const ageMonths = getAgeMonths(listing);
+    const hours = listing.hours_worked_per_week;
+    const niches = getNicheNames(listing);
+    const price = parseFloat(listing.listing_price || 0);
+
+    // 1. Overpricing risk (0-20): multiple vs niche median
+    const nicheMultiples = niches.flatMap(n => (md.nicheAcc[n] || { multiple: [] }).multiple);
+    const nicheMedianMult = median(nicheMultiples);
+    if (multiple > 0 && nicheMedianMult > 0) {
+      const overpriceRatio = multiple / nicheMedianMult;
+      risk.overpricing = Math.min(20, Math.max(0, (overpriceRatio - 1) * 40));
+    } else {
+      risk.overpricing = 10;
+    }
+
+    // 2. Immaturity risk (0-20): younger = riskier
+    risk.immaturity = Math.max(0, 20 - ageMonths * 0.5);
+
+    // 3. Low margin risk (0-15): margin < 30% is concerning
+    risk.lowMargin = margin > 0 ? Math.max(0, 15 - margin * 0.5) : 15;
+
+    // 4. Niche saturation risk (0-15): many active vs few sold = oversupply
+    const activeInNiche = niches.reduce((s, n) => s + (md.nicheActiveCount[n] || 0), 0) / Math.max(niches.length, 1);
+    const soldInNiche = niches.reduce((s, n) => s + (md.nicheSoldCount[n] || 0), 0) / Math.max(niches.length, 1);
+    const supplyRatio = soldInNiche > 0 ? activeInNiche / soldInNiche : 3;
+    risk.saturation = Math.min(15, Math.max(0, supplyRatio * 5));
+
+    // 5. Effort risk (0-15): high hours = harder to scale
+    if (hours != null && hours >= 0) {
+      risk.effort = Math.min(15, hours * 0.5);
+    } else {
+      risk.effort = 8;
+    }
+
+    // 6. Concentration risk (0-15): single niche = less diversified
+    risk.concentration = niches.length <= 1 ? 10 : Math.max(0, 15 - niches.length * 5);
+
+    risk.total = Math.round(Object.values(risk).reduce((a, b) => a + b, 0));
+    return risk;
+  }
+
+  function getRiskClass(total) {
+    if (total <= 25) return 'risk-low';
+    if (total <= 50) return 'risk-medium';
+    if (total <= 70) return 'risk-high';
+    return 'risk-critical';
+  }
+
+  function getRiskLabel(total) {
+    if (total <= 25) return 'Low Risk';
+    if (total <= 50) return 'Moderate';
+    if (total <= 70) return 'High Risk';
+    return 'Very High';
+  }
+
+  // --- Flip Opportunity Analyzer ---
+  function renderFlipOpportunities(forSale, md) {
+    const el = dom.flipOpportunities;
+    if (!el) return;
+
+    const flips = forSale.map(l => {
+      const niches = getNicheNames(l);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
+      const price = parseFloat(l.listing_price || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+      const num = l.listing_number || l.id;
+
+      // Best margin in the niche (robust avg of top quartile)
+      const nicheMargins = niches.flatMap(n => {
+        const acc = md.nicheAcc[n];
+        if (!acc || !acc.profit.length || !acc.revenue.length) return [];
+        return acc.profit.map((p, i) => acc.revenue[i] > 0 ? (p / acc.revenue[i]) * 100 : 0).filter(m => m > 0);
+      });
+      const bestNicheMargin = nicheMargins.length ? removeOutliers(nicheMargins).sort((a, b) => b - a).slice(0, Math.ceil(nicheMargins.length * 0.25)).reduce((a, b) => a + b, 0) / Math.ceil(nicheMargins.length * 0.25) : 0;
+
+      // If current margin is below niche top-quartile, there's upside
+      const targetMargin = Math.max(margin, Math.min(bestNicheMargin, 80));
+      const improvedProfit = revenue > 0 ? (targetMargin / 100) * revenue : profit;
+      const profitGainMonthly = Math.max(0, improvedProfit - profit);
+      const profitGainAnnual = profitGainMonthly * 12;
+      const marginGap = targetMargin - margin;
+
+      // Implied post-improvement valuation (at niche avg multiple)
+      const nicheAvgMult = niches.reduce((s, n) => s + (md.nicheAvgMultiple[n] || 0), 0) / Math.max(niches.length, 1);
+      const improvedValuation = improvedProfit * (nicheAvgMult > 0 ? nicheAvgMult : multiple);
+      const flipProfit = improvedValuation - price;
+
+      return {
+        listing: l, num, niches, price, profit, revenue, margin,
+        targetMargin, profitGainAnnual, marginGap, improvedProfit,
+        improvedValuation, flipProfit, multiple, nicheAvgMult
+      };
+    })
+    .filter(f => f.profitGainAnnual > 1000 && f.marginGap > 5 && f.revenue > 0)
+    .sort((a, b) => b.flipProfit - a.flipProfit)
+    .slice(0, 30);
+
+    el.innerHTML = flips.map((f, i) => {
+      const flipROI = f.price > 0 ? (f.flipProfit / f.price * 100) : 0;
+      return `
+        <div class="forecast-card flip-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <span class="forecast-rank">${i + 1}</span>
+              <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+              <span class="forecast-niche">${f.niches.map(n => escapeHtml(n)).join(', ')}</span>
+            </div>
+            <span class="forecast-badge ${flipROI > 50 ? 'badge-excellent' : flipROI > 20 ? 'badge-good' : 'badge-fair'}">${formatPercent(flipROI)} flip ROI</span>
+          </div>
+          <div class="forecast-metrics">
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Buy Price</span>
+              <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Current Margin</span>
+              <span class="forecast-metric-value">${formatPercent(f.margin)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Target Margin</span>
+              <span class="forecast-metric-value" style="color:var(--success)">${formatPercent(f.targetMargin)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Annual Profit Gain</span>
+              <span class="forecast-metric-value" style="color:var(--success)">+${formatUSD(f.profitGainAnnual)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Improved Valuation</span>
+              <span class="forecast-metric-value">${formatUSD(f.improvedValuation)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Flip Profit</span>
+              <span class="forecast-metric-value ${f.flipProfit > 0 ? '' : 'text-danger'}" style="color:${f.flipProfit > 0 ? 'var(--success)' : 'var(--danger)'}">${formatUSD(f.flipProfit)}</span>
+            </div>
+          </div>
+          <div class="forecast-bar-row">
+            <span class="forecast-bar-label">Margin improvement potential</span>
+            <div class="forecast-bar-track">
+              <div class="forecast-bar-current" style="width:${Math.min(100, f.margin)}%"></div>
+              <div class="forecast-bar-target" style="width:${Math.min(100, f.targetMargin)}%"></div>
+            </div>
+            <span class="forecast-bar-values">${formatPercent(f.margin)} → ${formatPercent(f.targetMargin)}</span>
+          </div>
+        </div>
+      `;
+    }).join('') || '<p class="empty-state">No flip opportunities found with significant margin improvement potential.</p>';
+  }
+
+  // --- ROI Projections Table ---
+  function renderROIProjections(scored, md) {
+    const table = dom.roiProjectionsTable;
+    if (!table) return;
+
+    const top40 = scored.slice(0, 40);
+    const rows = top40.map(item => {
+      const l = item.listing;
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const annualProfit = profit * 12;
+      const multiple = parseFloat(l.listing_multiple || 0);
+
+      // Conservative: -20% profit, Base: current, Optimistic: +30%
+      const conservative = annualProfit * 0.8;
+      const optimistic = annualProfit * 1.3;
+
+      const paybackBase = price > 0 && annualProfit > 0 ? price / annualProfit : 99;
+      const paybackCons = price > 0 && conservative > 0 ? price / conservative : 99;
+      const paybackOpt = price > 0 && optimistic > 0 ? price / optimistic : 99;
+
+      // Cumulative returns over years
+      const roi1y = price > 0 ? (annualProfit / price * 100) : 0;
+      const roi3y = price > 0 ? (annualProfit * 3 / price * 100) : 0;
+      const roi5y = price > 0 ? (annualProfit * 5 / price * 100) : 0;
+
+      const roi5yOpt = price > 0 ? (optimistic * 5 / price * 100) : 0;
+
+      return {
+        _name: `#${num}`, _num: num, _niches: niches.join(', '),
+        price, annualProfit, conservative, optimistic,
+        paybackBase, paybackCons, paybackOpt,
+        roi1y, roi3y, roi5y, roi5yOpt, score: item.score
+      };
+    });
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: 'price', label: 'Buy Price', render: r => formatUSD(r.price) },
+      { key: 'annualProfit', label: 'Base Annual', tdClass: 'profit-cell', render: r => formatUSD(r.annualProfit) },
+      { key: 'conservative', label: 'Conservative', render: r => formatUSD(r.conservative) },
+      { key: 'optimistic', label: 'Optimistic', tdClass: 'profit-cell', render: r => formatUSD(r.optimistic) },
+      { key: 'paybackBase', label: 'Payback (yrs)', render: r => r.paybackBase < 20 ? r.paybackBase.toFixed(1) + 'y' : '20+' },
+      { key: 'roi1y', label: 'ROI 1yr', tdClass: 'roi-cell', render: r => formatPercent(r.roi1y) },
+      { key: 'roi3y', label: 'ROI 3yr', tdClass: 'roi-cell', render: r => formatPercent(r.roi3y) },
+      { key: 'roi5y', label: 'ROI 5yr', tdClass: 'roi-cell', render: r => formatPercent(r.roi5y) },
+      { key: 'roi5yOpt', label: 'ROI 5yr (opt)', tdClass: 'profit-cell', render: r => formatPercent(r.roi5yOpt) },
+      { key: 'score', label: 'Deal Score', render: r => `<span class="score-badge ${getScoreClass(r.score)}">${r.score}</span>` },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'roi5y', 'desc');
+  }
+
+  // --- Sale Probability & Negotiation Intel ---
+  function renderSaleProbability(forSale, sold, md) {
+    const el = dom.saleProbabilityGrid;
+    if (!el) return;
+
+    // Build sold comps per niche: avg sold multiple, avg days to sell
+    const nicheSoldData = {};
+    sold.forEach(l => {
+      const niches = getNicheNames(l);
+      const soldMult = parseFloat(l.listing_multiple || 0);
+      const createdAt = l.first_listed_at || l.created_at;
+      const soldAt = l.sold_date || l.sold_at || l.updated_at;
+      let daysToSell = 0;
+      if (createdAt && soldAt) {
+        daysToSell = Math.max(0, (new Date(soldAt) - new Date(createdAt)) / (1000 * 60 * 60 * 24));
+      }
+      niches.forEach(n => {
+        if (!nicheSoldData[n]) nicheSoldData[n] = { multiples: [], daysToSell: [] };
+        if (soldMult > 0) nicheSoldData[n].multiples.push(soldMult);
+        if (daysToSell > 0 && daysToSell < 365) nicheSoldData[n].daysToSell.push(daysToSell);
+      });
+    });
+
+    const items = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+
+      // Avg sold multiple and days for this niche
+      const soldMults = niches.flatMap(n => (nicheSoldData[n] || { multiples: [] }).multiples);
+      const soldDays = niches.flatMap(n => (nicheSoldData[n] || { daysToSell: [] }).daysToSell);
+      const avgSoldMultiple = robustAvg(soldMults);
+      const medianDaysToSell = median(soldDays);
+
+      // Fair value = profit * avg sold multiple
+      const fairValue = profit > 0 && avgSoldMultiple > 0 ? profit * avgSoldMultiple : price;
+
+      // Negotiation room: how much above fair value is the asking price
+      const negotiationRoom = price > 0 && fairValue > 0 ? ((price - fairValue) / price * 100) : 0;
+
+      // Sale probability based on: pricing vs comps, niche demand
+      const demandRatio = niches.reduce((s, n) => {
+        const sold = md.nicheSoldCount[n] || 0;
+        const active = md.nicheActiveCount[n] || 1;
+        return s + sold / active;
+      }, 0) / Math.max(niches.length, 1);
+
+      const pricingFactor = avgSoldMultiple > 0 && multiple > 0
+        ? Math.min(1, avgSoldMultiple / multiple) // closer to 1 if priced at or below sold avg
+        : 0.5;
+
+      const saleProb = Math.min(95, Math.max(5, Math.round(
+        (pricingFactor * 50 + Math.min(demandRatio, 3) / 3 * 40 + (profit > 0 ? 5 : 0))
+      )));
+
+      return {
+        listing: l, num, niches, price, multiple, profit,
+        avgSoldMultiple, medianDaysToSell, fairValue,
+        negotiationRoom, saleProb, demandRatio
+      };
+    })
+    .filter(i => i.profit > 0)
+    .sort((a, b) => b.saleProb - a.saleProb)
+    .slice(0, 30);
+
+    el.innerHTML = items.map(f => {
+      const probClass = f.saleProb >= 70 ? 'badge-excellent' : f.saleProb >= 40 ? 'badge-good' : 'badge-fair';
+      const negotiationClass = f.negotiationRoom > 10 ? 'text-success' : f.negotiationRoom < -5 ? 'text-danger' : '';
+      return `
+        <div class="forecast-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+              <span class="forecast-niche">${f.niches.map(n => escapeHtml(n)).join(', ')}</span>
+            </div>
+            <span class="forecast-badge ${probClass}">${f.saleProb}% likely to sell</span>
+          </div>
+          <div class="forecast-metrics">
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Asking Price</span>
+              <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Est. Fair Value</span>
+              <span class="forecast-metric-value" style="color:var(--accent)">${formatUSD(f.fairValue)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Asking Multiple</span>
+              <span class="forecast-metric-value">${formatMultiple(f.multiple)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Avg Sold Multiple</span>
+              <span class="forecast-metric-value">${formatMultiple(f.avgSoldMultiple)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Negotiation Room</span>
+              <span class="forecast-metric-value ${negotiationClass}">${f.negotiationRoom > 0 ? '+' : ''}${formatPercent(f.negotiationRoom)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Avg Days to Sell</span>
+              <span class="forecast-metric-value">${f.medianDaysToSell > 0 ? Math.round(f.medianDaysToSell) + 'd' : '--'}</span>
+            </div>
+          </div>
+          <div class="sale-prob-bar">
+            <div class="sale-prob-fill ${f.saleProb >= 70 ? 'prob-high' : f.saleProb >= 40 ? 'prob-med' : 'prob-low'}" style="width:${f.saleProb}%"></div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<p class="empty-state">No sale probability data available.</p>';
+  }
+
+  // --- Niche Growth Radar ---
+  function renderNicheGrowth(forSale, sold, md) {
+    const el = dom.nicheGrowthGrid;
+    if (!el) return;
+
+    // For each niche, compute a health score based on:
+    // demand ratio, profit trend, volume, avg ROI
+    const niches = Object.keys(md.nicheTotalListings).filter(n => (md.nicheTotalListings[n] || 0) >= 3);
+
+    const maxSold = Math.max(...niches.map(n => md.nicheSoldCount[n] || 0), 1);
+    const maxProfit = Math.max(...niches.map(n => md.nicheAvgProfit[n] || 0), 1);
+
+    const nicheScores = niches.map(n => {
+      const soldCount = md.nicheSoldCount[n] || 0;
+      const activeCount = md.nicheActiveCount[n] || 0;
+      const avgProfit = md.nicheAvgProfit[n] || 0;
+      const avgMultiple = md.nicheAvgMultiple[n] || 0;
+      const demandRatio = activeCount > 0 ? soldCount / activeCount : soldCount;
+      const roi = avgMultiple > 0 ? (12 / avgMultiple) * 100 : 0;
+
+      // Health score (0-100)
+      const demandScore = Math.min(35, demandRatio * 15);
+      const profitScore = Math.min(30, (avgProfit / maxProfit) * 30);
+      const volumeScore = Math.min(15, (soldCount / maxSold) * 15);
+      const roiScore = Math.min(20, roi * 0.6);
+
+      const health = Math.round(demandScore + profitScore + volumeScore + roiScore);
+      const signal = health >= 65 ? 'growing' : health >= 40 ? 'stable' : 'declining';
+
+      return {
+        name: n, soldCount, activeCount, demandRatio, avgProfit,
+        avgMultiple, roi, health, signal,
+        annualProfit: avgProfit * 12
+      };
+    }).sort((a, b) => b.health - a.health);
+
+    // Render chart
+    renderNicheHealthChart(nicheScores.slice(0, 20));
+
+    // Render cards
+    el.innerHTML = nicheScores.slice(0, 20).map(n => {
+      const signalClass = n.signal === 'growing' ? 'signal-grow' : n.signal === 'stable' ? 'signal-stable' : 'signal-decline';
+      const signalIcon = n.signal === 'growing' ? '&#9650;' : n.signal === 'stable' ? '&#9644;' : '&#9660;';
+      return `
+        <div class="forecast-card niche-health-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <a href="#" class="browse-niche-link" data-niche="${escapeHtml(n.name)}">${escapeHtml(n.name)}</a>
+            </div>
+            <span class="signal-badge ${signalClass}">${signalIcon} ${n.signal}</span>
+          </div>
+          <div class="health-score-ring">
+            <svg viewBox="0 0 36 36" class="health-ring">
+              <path class="health-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="health-ring-fill ${signalClass}" stroke-dasharray="${n.health}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <text x="18" y="20.5" class="health-ring-text">${n.health}</text>
+            </svg>
+          </div>
+          <div class="forecast-metrics">
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Demand Ratio</span>
+              <span class="forecast-metric-value">${n.demandRatio.toFixed(1)}x</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Avg Annual Profit</span>
+              <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(n.annualProfit)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Annual ROI</span>
+              <span class="forecast-metric-value" style="color:var(--accent)">${formatPercent(n.roi)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Active / Sold</span>
+              <span class="forecast-metric-value">${n.activeCount} / ${n.soldCount}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Bind browse links
+    el.querySelectorAll('.browse-niche-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        browseByNiche(link.dataset.niche);
+      });
+    });
+  }
+
+  function renderNicheHealthChart(nicheScores) {
+    destroyChart('nicheHealth');
+    const canvas = $('#chart-niche-health');
+    if (!canvas) return;
+
+    const labels = nicheScores.map(n => n.name);
+    const healthData = nicheScores.map(n => n.health);
+    const colors = nicheScores.map(n =>
+      n.signal === 'growing' ? 'rgba(46, 160, 67, 0.8)' :
+      n.signal === 'stable' ? 'rgba(210, 153, 34, 0.8)' :
+      'rgba(218, 54, 51, 0.8)'
+    );
+
+    state.charts.nicheHealth = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Health Score',
+          data: healthData,
+          backgroundColor: colors,
+          borderRadius: 4,
+        }]
+      },
+      options: hBarOpts({ title: 'Niche Health Score', yLabel: '', xLabel: 'Health (0-100)' })
+    });
+  }
+
+  // --- Risk Assessment Table ---
+  function renderRiskAssessment(forSale, md) {
+    const table = dom.riskAssessmentTable;
+    if (!table) return;
+
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const risk = calculateRisk(l, md);
+
+      return {
+        _name: `#${num}`, _num: num, _niches: niches.join(', '),
+        price, monthlyProfit: profit,
+        overpricing: Math.round(risk.overpricing),
+        immaturity: Math.round(risk.immaturity),
+        lowMargin: Math.round(risk.lowMargin),
+        saturation: Math.round(risk.saturation),
+        effort: Math.round(risk.effort),
+        concentration: Math.round(risk.concentration),
+        riskTotal: risk.total,
+      };
+    })
+    .sort((a, b) => a.riskTotal - b.riskTotal)
+    .slice(0, 50);
+
+    const riskBar = (val, max) => {
+      const pct = Math.min(100, (val / max) * 100);
+      const color = pct <= 33 ? 'var(--success)' : pct <= 66 ? 'var(--warning)' : 'var(--danger)';
+      return `<div class="mini-risk-bar"><div class="mini-risk-fill" style="width:${pct}%;background:${color}"></div></div><span>${val}</span>`;
+    };
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
+      { key: 'monthlyProfit', label: 'Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.monthlyProfit) },
+      { key: 'overpricing', label: 'Overprice', render: r => riskBar(r.overpricing, 20) },
+      { key: 'immaturity', label: 'Immature', render: r => riskBar(r.immaturity, 20) },
+      { key: 'lowMargin', label: 'Low Margin', render: r => riskBar(r.lowMargin, 15) },
+      { key: 'saturation', label: 'Saturated', render: r => riskBar(r.saturation, 15) },
+      { key: 'effort', label: 'Effort', render: r => riskBar(r.effort, 15) },
+      { key: 'concentration', label: 'Concentr.', render: r => riskBar(r.concentration, 15) },
+      { key: 'riskTotal', label: 'Total Risk', render: r => `<span class="risk-total-badge ${getRiskClass(r.riskTotal)}">${r.riskTotal}/100 ${getRiskLabel(r.riskTotal)}</span>` },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'riskTotal', 'asc');
+  }
+
+  // --- Passive Income Scorecard ---
+  function renderPassiveIncome(forSale, md) {
+    const el = dom.passiveIncomeGrid;
+    if (!el) return;
+
+    const items = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const price = parseFloat(l.listing_price || 0);
+      const hours = l.hours_worked_per_week;
+      const multiple = parseFloat(l.listing_multiple || 0);
+
+      if (hours == null || hours <= 0 || profit <= 0) return null;
+
+      const profitPerHour = profit / hours;
+      const annualProfitPerHour = profitPerHour * 12;
+      const annualProfit = profit * 12;
+      const roi = price > 0 ? (annualProfit / price * 100) : 0;
+      const monthlyPerDollar = price > 0 ? (profit / price * 1000) : 0;
+
+      return {
+        listing: l, num, niches, profit, price, hours, multiple,
+        profitPerHour, annualProfitPerHour, annualProfit, roi, monthlyPerDollar
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.profitPerHour - a.profitPerHour)
+    .slice(0, 30);
+
+    el.innerHTML = items.map((f, i) => {
+      const efficiency = f.hours <= 5 ? 'Highly Passive' : f.hours <= 10 ? 'Semi-Passive' : f.hours <= 20 ? 'Part-Time' : 'Active';
+      const effClass = f.hours <= 5 ? 'eff-excellent' : f.hours <= 10 ? 'eff-good' : f.hours <= 20 ? 'eff-fair' : 'eff-active';
+      return `
+        <div class="forecast-card passive-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <span class="forecast-rank">${i + 1}</span>
+              <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+              <span class="forecast-niche">${f.niches.map(n => escapeHtml(n)).join(', ')}</span>
+            </div>
+            <span class="forecast-badge ${effClass}">${efficiency}</span>
+          </div>
+          <div class="passive-hero">
+            <div class="passive-hero-value">${formatUSD(f.profitPerHour)}</div>
+            <div class="passive-hero-label">profit / hour / week</div>
+          </div>
+          <div class="forecast-metrics">
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Monthly Profit</span>
+              <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(f.profit)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Hours/Week</span>
+              <span class="forecast-metric-value">${f.hours}h</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Price</span>
+              <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Annual ROI</span>
+              <span class="forecast-metric-value" style="color:var(--accent)">${formatPercent(f.roi)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<p class="empty-state">No passive income data available (listings missing hours data).</p>';
   }
 
   // =====================================================================

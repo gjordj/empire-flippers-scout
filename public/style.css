@@ -1715,6 +1715,359 @@ a:hover {
   display: none !important;
 }
 
+/* ============================================
+   FORECASTING & DEEP ANALYSIS
+   ============================================ */
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.forecast-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color var(--transition);
+}
+
+.forecast-card:hover {
+  border-color: var(--accent);
+}
+
+.forecast-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forecast-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forecast-card-title a {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.forecast-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.forecast-niche {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.forecast-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-excellent {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-good {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge-fair {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-secondary);
+}
+
+.forecast-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.forecast-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.forecast-metric-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.forecast-metric-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Flip card margin bar */
+.forecast-bar-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.forecast-bar-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.forecast-bar-track {
+  position: relative;
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.forecast-bar-current {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--warning);
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.forecast-bar-target {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(46, 160, 67, 0.3);
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.forecast-bar-values {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* Sale probability bar */
+.sale-prob-bar {
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.sale-prob-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.prob-high { background: var(--success); }
+.prob-med { background: var(--warning); }
+.prob-low { background: var(--danger); }
+
+/* Niche health ring */
+.niche-health-card {
+  text-align: center;
+}
+
+.niche-health-card .forecast-card-header {
+  justify-content: center;
+}
+
+.health-score-ring {
+  width: 80px;
+  height: 80px;
+  margin: 8px auto 12px;
+}
+
+.health-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.health-ring-bg {
+  fill: none;
+  stroke: var(--bg-primary);
+  stroke-width: 3;
+}
+
+.health-ring-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.health-ring-fill.signal-grow { stroke: var(--success); }
+.health-ring-fill.signal-stable { stroke: var(--warning); }
+.health-ring-fill.signal-decline { stroke: var(--danger); }
+
+.health-ring-text {
+  fill: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: var(--font-mono);
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.signal-grow {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.signal-stable {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.signal-decline {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Risk assessment */
+.mini-risk-bar {
+  display: inline-block;
+  width: 40px;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.mini-risk-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.risk-total-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.risk-low {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.risk-medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.risk-high {
+  background: rgba(218, 54, 51, 0.12);
+  color: #ef4444;
+}
+
+.risk-critical {
+  background: rgba(218, 54, 51, 0.2);
+  color: #dc2626;
+}
+
+/* Passive income */
+.passive-hero {
+  text-align: center;
+  padding: 12px 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.passive-hero-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--success);
+  font-family: var(--font-mono);
+}
+
+.passive-hero-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.eff-excellent {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.eff-good {
+  background: rgba(79, 134, 247, 0.15);
+  color: var(--accent);
+}
+
+.eff-fair {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.eff-active {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-secondary);
+}
+
+.flip-card {
+  border-color: var(--accent-dim);
+}
+
+.text-success { color: var(--success) !important; }
+.text-danger { color: var(--danger) !important; }
+
 /* --- Responsive --- */
 /* ============================================
    RESPONSIVE / MOBILE
@@ -1910,9 +2263,28 @@ a:hover {
   .opportunities-grid,
   .trends-grid,
   .favorites-grid,
-  .wealth-picks {
+  .wealth-picks,
+  .forecast-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .forecast-card {
+    padding: 14px;
+  }
+
+  .forecast-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .health-score-ring {
+    width: 65px;
+    height: 65px;
+  }
+
+  .passive-hero-value {
+    font-size: 1.2rem;
   }
 
   .opp-card,
