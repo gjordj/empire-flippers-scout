@@ -2265,6 +2265,74 @@ a:hover {
   line-height: 1.4;
 }
 
+.moat-card {
+  border-left: 3px solid var(--danger);
+}
+
+.moat-details {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 8px;
+}
+
+.moat-details-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.moat-detail-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bg-primary);
+}
+
+.moat-detail-row:last-child {
+  border-bottom: none;
+}
+
+.moat-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.moat-detail-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.moat-strength {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.moat-detail-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.moat-verdict-row {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.moat-verdict-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
 /* ============================================
    CATEGORY HEADERS
    ============================================ */

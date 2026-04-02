@@ -3142,13 +3142,50 @@
       verdictClass = 'verdict-buy';
     }
 
-    // Key moats (human-readable)
+    // Key moats (human-readable) with detailed categories
     const moats = [];
-    if (ageMonths > 36) moats.push(`${Math.round(ageMonths / 12)}yr SEO authority`);
-    if (hasTrademark) moats.push('Trademarked brand');
-    if (hasSBA) moats.push('SBA approved');
-    if (baseBuildCost < 40) moats.push('Physical supply chain');
-    if (hours != null && hours > 25) moats.push('Complex operations');
+    const moatDetails = [];
+    if (ageMonths > 60) {
+      moats.push(`${Math.round(ageMonths / 12)}yr SEO authority`);
+      moatDetails.push({ type: 'SEO Authority', icon: 'shield', strength: 'Very Strong', desc: `${Math.round(ageMonths / 12)} years of backlinks, domain authority, and organic rankings that take years to replicate` });
+    } else if (ageMonths > 36) {
+      moats.push(`${Math.round(ageMonths / 12)}yr SEO authority`);
+      moatDetails.push({ type: 'SEO Authority', icon: 'shield', strength: 'Strong', desc: `${Math.round(ageMonths / 12)} years of search presence and domain trust` });
+    } else if (ageMonths > 18) {
+      moatDetails.push({ type: 'Growing Authority', icon: 'shield', strength: 'Moderate', desc: `${Math.round(ageMonths / 12)}yr history building organic presence` });
+    }
+    if (hasTrademark) {
+      moats.push('Trademarked brand');
+      moatDetails.push({ type: 'Brand IP', icon: 'lock', strength: 'Strong', desc: 'Registered trademark — legal protection against copycats' });
+    }
+    if (hasSBA) {
+      moats.push('SBA approved');
+      moatDetails.push({ type: 'Institutional Trust', icon: 'bank', strength: 'Moderate', desc: 'SBA-approved — passed financial vetting, easier buyer financing' });
+    }
+    if (baseBuildCost < 30) {
+      moats.push('Physical supply chain');
+      moatDetails.push({ type: 'Supply Chain', icon: 'truck', strength: 'Very Strong', desc: 'Physical inventory, supplier relationships, and logistics that AI cannot replicate' });
+    } else if (baseBuildCost < 45) {
+      moats.push('Product sourcing');
+      moatDetails.push({ type: 'Product Moat', icon: 'box', strength: 'Strong', desc: 'Physical products or complex marketplace requiring real-world infrastructure' });
+    }
+    if (hours != null && hours > 30) {
+      moats.push('Complex operations');
+      moatDetails.push({ type: 'Operational Complexity', icon: 'gear', strength: 'Moderate', desc: `${hours}h/week operations — requires human expertise and relationships` });
+    }
+    if (profit > 5000 && margin > 40) {
+      moatDetails.push({ type: 'Proven Revenue Engine', icon: 'money', strength: 'Strong', desc: `${formatUSD(profit)}/mo profit with ${margin.toFixed(0)}% margin — validated business model with real customers` });
+    }
+    // Niche dominance: if this listing's profit is well above niche average
+    const nicheAvg = niches.reduce((s, n) => s + (md.nicheAvgProfit[n] || 0), 0) / Math.max(niches.length, 1);
+    if (profit > nicheAvg * 1.5 && nicheAvg > 0) {
+      moatDetails.push({ type: 'Niche Leader', icon: 'crown', strength: 'Strong', desc: `Profit ${((profit / nicheAvg - 1) * 100).toFixed(0)}% above niche average — market leadership position` });
+    }
+    // Recurring revenue moat
+    const hasRecurring = mons.some(m => /subscription|membership|saas|recurring/i.test(m));
+    if (hasRecurring) {
+      moatDetails.push({ type: 'Recurring Revenue', icon: 'repeat', strength: 'Strong', desc: 'Subscription/recurring model — predictable cash flow with customer lock-in' });
+    }
 
     // AI advantages
     const aiAdvantages = [];
@@ -3156,13 +3193,14 @@
     if (baseBuildCost > 55) aiAdvantages.push('AI can build the tech stack');
     if (margin > 60) aiAdvantages.push('High-margin digital model');
     if (hours != null && hours < 10) aiAdvantages.push('Simple operations to automate');
+    if (ageMonths < 18) aiAdvantages.push('Young domain — no SEO moat to overcome');
 
     return {
       replicabilityScore: Math.min(100, Math.max(0, replicabilityScore)),
       moatScore: Math.min(100, Math.max(0, moatScore)),
       verdict, verdictClass,
       estimatedBuildCost, estimatedTimeMonths,
-      moats, aiAdvantages,
+      moats, moatDetails, aiAdvantages,
       breakdown: rep,
     };
   }
@@ -3245,44 +3283,88 @@
     }).join('') || '<p class="empty-state">No replicability data available.</p>';
   }
 
-  // --- Strongest Moats Table ---
+  // --- Strongest Moats (Rich Cards) ---
   function renderMoatTable(forSale, md) {
     const table = dom.moatTable;
     if (!table) return;
 
-    const rows = forSale.map(l => {
+    // Repurpose the table container as a card grid
+    const parent = table.parentElement.parentElement.parentElement; // table > table-scroll > table-container > dashboard-section
+    // Replace table container with a grid
+    const container = table.closest('.table-container');
+    if (!container) return;
+
+    const items = forSale.map(l => {
       const num = l.listing_number || l.id;
       const niches = getNicheNames(l);
       const mons = getMonetizationNames(l);
       const price = parseFloat(l.listing_price || 0);
       const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const ageMonths = getAgeMonths(l);
       const rep = calculateReplicability(l, md);
 
-      return {
-        _name: `#${num}`, _num: num,
-        niche: niches.join(', '), monetization: mons.join(', '),
-        price, annualProfit: profit * 12,
-        moatScore: rep.moatScore,
-        replicabilityScore: rep.replicabilityScore,
-        verdict: rep.verdict, verdictClass: rep.verdictClass,
-        moats: rep.moats.join(', ') || 'None identified',
-      };
+      return { listing: l, num, niches, mons, price, profit, multiple, ageMonths, ...rep, annualProfit: profit * 12 };
     })
-    .filter(r => r.annualProfit > 0 && r.moatScore >= 50)
+    .filter(i => i.profit > 0 && i.moatScore >= 55)
     .sort((a, b) => b.moatScore - a.moatScore)
-    .slice(0, 40);
+    .slice(0, 25);
 
-    const columns = [
-      { key: '_rank', label: '#' },
-      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
-      { key: 'monetization', label: 'Type', render: r => escapeHtml(r.monetization) },
-      { key: 'moatScore', label: 'Moat Score', render: r => `<span class="bvb-verdict ${r.verdictClass}">${r.moatScore}/100</span>` },
-      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
-      { key: 'annualProfit', label: 'Annual Profit', tdClass: 'profit-cell', render: r => formatUSD(r.annualProfit) },
-      { key: 'moats', label: 'Key Moats', render: r => `<span class="moat-text">${escapeHtml(r.moats)}</span>` },
-    ];
+    const strengthColor = s => s === 'Very Strong' ? 'var(--danger)' : s === 'Strong' ? 'var(--warning)' : 'var(--accent)';
 
-    buildSortableLeaderboard(table, columns, rows, 'moatScore', 'desc');
+    const grid = document.createElement('div');
+    grid.className = 'forecast-grid';
+    grid.innerHTML = items.map((f, i) => `
+      <div class="forecast-card moat-card">
+        <div class="forecast-card-header">
+          <div class="forecast-card-title">
+            <span class="forecast-rank">${i + 1}</span>
+            <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+            <span class="forecast-niche">${f.niches.map(n => escapeHtml(n)).join(', ')}</span>
+          </div>
+          <span class="bvb-verdict verdict-buy">${f.moatScore}/100 moat</span>
+        </div>
+
+        <div class="forecast-metrics" style="margin-bottom:10px">
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Price</span>
+            <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Annual Profit</span>
+            <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(f.annualProfit)}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Business Age</span>
+            <span class="forecast-metric-value">${f.ageMonths >= 12 ? (f.ageMonths / 12).toFixed(1) + ' years' : f.ageMonths + ' mo'}</span>
+          </div>
+          <div class="forecast-metric">
+            <span class="forecast-metric-label">Type</span>
+            <span class="forecast-metric-value">${f.mons.map(m => escapeHtml(m)).join(', ')}</span>
+          </div>
+        </div>
+
+        <div class="moat-details">
+          <div class="moat-details-title">Competitive Moats</div>
+          ${f.moatDetails.map(m => `
+            <div class="moat-detail-row">
+              <div class="moat-detail-header">
+                <span class="moat-detail-type">${escapeHtml(m.type)}</span>
+                <span class="moat-strength" style="color:${strengthColor(m.strength)}">${m.strength}</span>
+              </div>
+              <p class="moat-detail-desc">${escapeHtml(m.desc)}</p>
+            </div>
+          `).join('')}
+          ${f.moatDetails.length === 0 ? '<p class="moat-detail-desc">No specific moats identified beyond general market presence.</p>' : ''}
+        </div>
+
+        <div class="moat-verdict-row">
+          <span class="moat-verdict-text">Hard to replicate with AI. Consider buying.</span>
+        </div>
+      </div>
+    `).join('') || '<p class="empty-state">No strong-moat businesses found.</p>';
+
+    container.replaceWith(grid);
   }
 
   // --- Most Replicable Table ---
