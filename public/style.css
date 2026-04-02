@@ -1673,6 +1673,36 @@ a:hover {
 }
 
 /* --- Toast --- */
+/* Floating Back to TOC button */
+.back-to-toc {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 150;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  transform: translateY(10px);
+}
+.back-to-toc.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.back-to-toc:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
 .toast-container {
   position: fixed;
   bottom: 24px;

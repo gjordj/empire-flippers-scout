@@ -4889,6 +4889,18 @@
   //  EVENT BINDING
   // =====================================================================
   function bindEvents() {
+    // Back to TOC floating button
+    const backToTocBtn = $('#back-to-toc');
+    if (backToTocBtn) {
+      window.addEventListener('scroll', () => {
+        backToTocBtn.classList.toggle('visible', window.scrollY > 600);
+      });
+      backToTocBtn.addEventListener('click', () => {
+        const toc = $('#dashboard-toc');
+        if (toc) toc.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
     // Tab navigation
     $$('.nav-tab').forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.tab));
