@@ -61,6 +61,8 @@
           <div class="toc-links">
             <a href="#sec-distributions" class="toc-link">Distributions</a>
             <a href="#sec-seasonality" class="toc-link">Seasonality</a>
+            <a href="#sec-market-signal" class="toc-link">Market Signal</a>
+            <a href="#sec-multiple-trends" class="toc-link">Multiple Trends</a>
           </div>
         </div>
         <div class="toc-group">
@@ -97,6 +99,8 @@
             <a href="#sec-comps" class="toc-link">Comps</a>
             <a href="#sec-sale-prob" class="toc-link">Sale Probability</a>
             <a href="#sec-days-on-market" class="toc-link">Days on Market</a>
+            <a href="#sec-negotiation" class="toc-link">Negotiation Intel</a>
+            <a href="#sec-motivated" class="toc-link">Motivated Sellers</a>
             <a href="#sec-budget" class="toc-link">Budget Optimizer</a>
           </div>
         </div>
@@ -113,6 +117,12 @@
           <div class="toc-links">
             <a href="#sec-risk" class="toc-link">Risk Matrix</a>
             <a href="#sec-passive" class="toc-link">Passive Income</a>
+          </div>
+        </div>
+        <div class="toc-group">
+          <span class="toc-group-label">Listing Deep Dive</span>
+          <div class="toc-links">
+            <a href="#" class="toc-link" id="toc-open-deep-dive">Analyze a Listing</a>
           </div>
         </div>
       </nav>
@@ -151,6 +161,7 @@
 
       <div class="dashboard-section" id="sec-distributions">
         <h2 class="section-title">Market Distributions</h2>
+        <div class="distribution-stats" id="distribution-stats"></div>
         <div class="charts-row">
           <div class="chart-card">
             <h3>Price Distribution (Active For Sale)</h3>
@@ -184,6 +195,27 @@
           <div class="chart-card">
             <h3>Sales Volume by Month</h3>
             <canvas id="chart-seasonality-volume"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-market-signal">
+        <h2 class="section-title">Buyer's vs Seller's Market</h2>
+        <p class="section-subtitle">Compare current asking multiples to what businesses actually sell for. Big gap = lots of negotiation room (buyer's market). Small gap = sellers have pricing power.</p>
+        <div class="market-signal-container" id="market-signal-container"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-multiple-trends">
+        <h2 class="section-title">Historical Multiple Trends</h2>
+        <p class="section-subtitle">How sale multiples have moved over time. Falling multiples = better time to buy. Rising = market heating up.</p>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Quarterly Avg Sold Multiple</h3>
+            <canvas id="chart-multiple-trends"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Quarterly Sales Volume &amp; Avg Price</h3>
+            <canvas id="chart-volume-trends"></canvas>
           </div>
         </div>
       </div>
@@ -356,6 +388,22 @@
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="days-on-market-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-negotiation">
+        <h2 class="section-title">Negotiation Intelligence</h2>
+        <p class="section-subtitle">How much below asking price do businesses actually sell for? Broken down by niche, price range, and time on market. Use this to calibrate your offers.</p>
+        <div class="negotiation-container" id="negotiation-container"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-motivated">
+        <h2 class="section-title">Motivated Seller Detector</h2>
+        <p class="section-subtitle">Listings sitting unsold AND priced above their niche median. These sellers are most likely to accept a lower offer. Your best negotiation targets.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="motivated-sellers-table"></table>
           </div>
         </div>
       </div>
@@ -595,6 +643,7 @@
         <button class="btn btn-ghost" id="btn-clear-favorites">Clear All Favorites</button>
       </div>
     </div>
+    <div class="portfolio-diversification hidden" id="portfolio-diversification"></div>
     <div class="favorites-grid" id="favorites-grid">
       <div class="empty-state" id="favorites-empty">
         <p>No favorites yet. Click the star icon on any listing to save it here.</p>
@@ -630,6 +679,29 @@
         <button class="modal-close" id="modal-close">&times;</button>
       </div>
       <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Listing Deep Dive Overlay -->
+  <div class="deep-dive-overlay hidden" id="deep-dive-overlay">
+    <div class="deep-dive-panel">
+      <div class="deep-dive-header">
+        <div class="deep-dive-search-row">
+          <h2>Listing Deep Dive</h2>
+          <div class="deep-dive-search">
+            <input type="text" id="deep-dive-search" placeholder="Search listing # or niche..." class="input-sm">
+            <select id="deep-dive-select" class="input-select">
+              <option value="">Select a listing...</option>
+            </select>
+          </div>
+          <button class="deep-dive-close" id="deep-dive-close">&times;</button>
+        </div>
+      </div>
+      <div class="deep-dive-body" id="deep-dive-body">
+        <div class="deep-dive-empty">
+          <p>Select a listing above to see a complete analysis compared to the entire market.</p>
+        </div>
+      </div>
     </div>
   </div>
 

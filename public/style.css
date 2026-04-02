@@ -3185,3 +3185,599 @@ a:hover {
     height: 20px;
   }
 }
+
+/* =====================================================
+   DISTRIBUTION STATS
+   ===================================================== */
+.distribution-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dist-stat {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+}
+
+.dist-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dist-stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.dist-stat-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* =====================================================
+   MARKET SIGNAL (Buyer's vs Seller's Market)
+   ===================================================== */
+.market-signal-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.signal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+}
+
+.signal-card-title {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.signal-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.signal-card-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.signal-buyers { border-left: 4px solid var(--success); }
+.signal-sellers { border-left: 4px solid var(--danger); }
+.signal-neutral { border-left: 4px solid var(--warning); }
+
+.signal-verdict {
+  grid-column: 1 / -1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+}
+
+.signal-verdict-label {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.signal-verdict-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* =====================================================
+   NEGOTIATION INTELLIGENCE
+   ===================================================== */
+.negotiation-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.negotiation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.negotiation-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.negotiation-card h4 {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.negotiation-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+
+.negotiation-stat-label {
+  color: var(--text-secondary);
+}
+
+.negotiation-stat-value {
+  font-weight: 600;
+}
+
+.negotiation-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* =====================================================
+   MOTIVATED SELLERS
+   ===================================================== */
+.motivated-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.motivated-hot {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.motivated-warm {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+/* =====================================================
+   DEEP DIVE OVERLAY
+   ===================================================== */
+.deep-dive-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.deep-dive-overlay.hidden {
+  display: none;
+}
+
+.deep-dive-panel {
+  width: 100%;
+  max-width: 1200px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.deep-dive-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 201;
+}
+
+.deep-dive-search-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.deep-dive-search-row h2 {
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.deep-dive-search {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.deep-dive-search input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.deep-dive-search select {
+  flex: 2;
+  min-width: 200px;
+}
+
+.deep-dive-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.deep-dive-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.deep-dive-body {
+  padding: 24px;
+}
+
+.deep-dive-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.dd-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.dd-hero-left {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.dd-hero-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.dd-hero-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.dd-hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.dd-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dd-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.dd-hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dd-score-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  flex: 1;
+}
+
+.dd-score-card h4 {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.dd-score-big {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.dd-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.dd-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dd-percentile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.dd-percentile-item {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.dd-percentile-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.dd-percentile-bar {
+  height: 8px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.dd-percentile-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.dd-percentile-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.dd-percentile-yours {
+  font-weight: 700;
+}
+
+.dd-calc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dd-calc-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dd-calc-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dd-calc-group label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.dd-calc-group input,
+.dd-calc-group select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.dd-calc-results {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.dd-calc-result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.dd-calc-result-row:last-child {
+  border-bottom: none;
+}
+
+.dd-calc-result-label {
+  color: var(--text-secondary);
+}
+
+.dd-calc-result-value {
+  font-weight: 600;
+}
+
+.dd-chart-container {
+  height: 250px;
+  margin-top: 12px;
+}
+
+.dd-chart-container canvas {
+  max-height: 250px;
+}
+
+.dd-comps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dd-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* =====================================================
+   PORTFOLIO DIVERSIFICATION
+   ===================================================== */
+.portfolio-diversification {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.portfolio-diversification.hidden {
+  display: none;
+}
+
+.portfolio-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.portfolio-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.portfolio-stat {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+}
+
+.portfolio-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.portfolio-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.portfolio-overlap {
+  margin-top: 12px;
+}
+
+.portfolio-overlap-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.portfolio-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portfolio-tag {
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.portfolio-tag-warn {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.portfolio-risk-bar {
+  height: 10px;
+  background: var(--bg-hover);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.portfolio-risk-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+@media (max-width: 768px) {
+  .dd-hero {
+    grid-template-columns: 1fr;
+  }
+  .dd-calc-grid {
+    grid-template-columns: 1fr;
+  }
+  .deep-dive-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .deep-dive-search {
+    flex-direction: column;
+  }
+  .deep-dive-close {
+    position: absolute;
+    right: 16px;
+    top: 12px;
+  }
+  .market-signal-container {
+    grid-template-columns: 1fr;
+  }
+  .negotiation-grid {
+    grid-template-columns: 1fr;
+  }
+}

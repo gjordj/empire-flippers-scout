@@ -99,6 +99,18 @@
     buildVsBuyGrid: $('#build-vs-buy-grid'),
     moatTable: $('#moat-table'),
     replicableTable: $('#replicable-table'),
+    // New analysis
+    marketSignalContainer: $('#market-signal-container'),
+    negotiationContainer: $('#negotiation-container'),
+    motivatedSellersTable: $('#motivated-sellers-table'),
+    portfolioDiversification: $('#portfolio-diversification'),
+    // Deep dive
+    deepDiveOverlay: $('#deep-dive-overlay'),
+    deepDiveBody: $('#deep-dive-body'),
+    deepDiveSearch: $('#deep-dive-search'),
+    deepDiveSelect: $('#deep-dive-select'),
+    deepDiveClose: $('#deep-dive-close'),
+    tocOpenDeepDive: $('#toc-open-deep-dive'),
     // Favorites
     favoritesGrid: $('#favorites-grid'),
     favoritesEmpty: $('#favorites-empty'),
@@ -727,6 +739,14 @@
     td.innerHTML = `<div class="detail-content">${buildDetailContent(listing)}</div>`;
     detailTr.appendChild(td);
     parentTr.after(detailTr);
+
+    // Bind deep dive button in detail row
+    const ddBtn = detailTr.querySelector('.detail-deep-dive-btn');
+    if (ddBtn) {
+      ddBtn.addEventListener('click', () => {
+        openListingDeepDive(ddBtn.dataset.num);
+      });
+    }
   }
 
   function buildDetailContent(listing) {
@@ -784,11 +804,13 @@
       { key: 'Trademark Bonus', value: `${breakdown.trademark} / 3` },
     ];
 
+    const listingNum = listing.listing_number || listing.id;
     return `
       <div class="detail-grid">
         <div class="detail-section">
           <h4>Deal Score Breakdown</h4>
           ${scoreItems.map(s => `<div class="detail-row-item"><span class="label">${s.key}</span><span class="value">${s.value}</span></div>`).join('')}
+          <div style="margin-top:10px"><button class="btn btn-sm btn-accent detail-deep-dive-btn" data-num="${escapeHtml(String(listingNum))}">Full Deep Dive Analysis</button></div>
         </div>
         ${renderSection('Financial', financial)}
         ${renderSection('Business', business)}
@@ -1266,6 +1288,7 @@
 
     // Each render wrapped in try/catch so one failure doesn't break the rest
     const renders = [
+      ['DistributionStats', () => renderDistributionStats(forSale, sold)],
       ['NicheLeaderboard', () => renderNicheLeaderboard(md)],
       ['NicheProfitChart', () => renderNicheProfitChart(md)],
       ['NicheROIChart', () => renderNicheROIChart(md)],
@@ -1294,6 +1317,10 @@
       ['BuildVsBuy', () => renderBuildVsBuy(forSale, md)],
       ['MoatTable', () => renderMoatTable(forSale, md)],
       ['ReplicableTable', () => renderReplicableTable(forSale, md)],
+      ['MarketSignal', () => renderMarketSignal(forSale, sold, md)],
+      ['HistoricalTrends', () => renderHistoricalTrends(sold)],
+      ['NegotiationIntel', () => renderNegotiationIntel(forSale, sold, md)],
+      ['MotivatedSellers', () => renderMotivatedSellers(forSale, md)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -1607,6 +1634,7 @@
             <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener" class="btn btn-sm btn-accent" style="text-decoration:none">View Listing</a>
             <button class="btn btn-sm btn-secondary opp-fav-btn" data-idx="${i}">${isFavorited(l) ? '\u2605 Saved' : '\u2606 Save'}</button>
             <button class="btn btn-sm btn-ghost opp-compare-btn" data-idx="${i}">+ Compare</button>
+            <button class="btn btn-sm btn-ghost opp-analyze-btn" data-num="${escapeHtml(String(num))}">Deep Dive</button>
           </div>
         </div>
       `;
@@ -1626,6 +1654,12 @@
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx);
         toggleCompare(scored[idx].listing);
+      });
+    });
+
+    dom.opportunitiesGrid.querySelectorAll('.opp-analyze-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openListingDeepDive(btn.dataset.num);
       });
     });
   }
@@ -1667,6 +1701,70 @@
         y: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
       },
     };
+  }
+
+  function renderDistributionStats(forSale, sold) {
+    const el = $('#distribution-stats');
+    if (!el) return;
+
+    const prices = forSale.map(l => parseFloat(l.listing_price || 0)).filter(p => p > 0);
+    const profits = forSale.map(l => parseFloat(l.average_monthly_net_profit || 0)).filter(p => p > 0);
+    const multiples = forSale.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+    const revenues = forSale.map(l => parseFloat(l.average_monthly_gross_revenue || 0)).filter(r => r > 0);
+    const margins = forSale.map(l => {
+      const r = parseFloat(l.average_monthly_gross_revenue || 0);
+      const p = parseFloat(l.average_monthly_net_profit || 0);
+      return r > 0 ? (p / r * 100) : 0;
+    }).filter(m => m > 0);
+    const hours = forSale.map(l => l.hours_worked_per_week).filter(h => h != null && h > 0);
+
+    const soldMultiples = sold.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+
+    const totalMarketValue = prices.reduce((a, b) => a + b, 0);
+    const totalAnnualProfit = profits.reduce((a, b) => a + b, 0) * 12;
+
+    el.innerHTML = `
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Price</div>
+        <div class="dist-stat-value">${formatUSD(median(prices))}</div>
+        <div class="dist-stat-sub">Avg: ${formatUSD(robustAvg(prices))}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Monthly Profit</div>
+        <div class="dist-stat-value" style="color:var(--success)">${formatUSD(median(profits))}</div>
+        <div class="dist-stat-sub">Avg: ${formatUSD(robustAvg(profits))}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Multiple</div>
+        <div class="dist-stat-value">${formatMultiple(median(multiples))}</div>
+        <div class="dist-stat-sub">Sold: ${formatMultiple(median(soldMultiples))}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Revenue</div>
+        <div class="dist-stat-value">${formatUSD(median(revenues))}</div>
+        <div class="dist-stat-sub">Avg: ${formatUSD(robustAvg(revenues))}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Margin</div>
+        <div class="dist-stat-value">${formatPercent(median(margins))}</div>
+        <div class="dist-stat-sub">Avg: ${formatPercent(robustAvg(margins))}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Median Hrs/Wk</div>
+        <div class="dist-stat-value">${hours.length ? median(hours).toFixed(0) + 'h' : '--'}</div>
+        <div class="dist-stat-sub">Avg: ${hours.length ? robustAvg(hours).toFixed(0) + 'h' : '--'}</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Total Market Value</div>
+        <div class="dist-stat-value">${formatUSD(totalMarketValue)}</div>
+        <div class="dist-stat-sub">${forSale.length} active listings</div>
+      </div>
+      <div class="dist-stat">
+        <div class="dist-stat-label">Total Annual Profit</div>
+        <div class="dist-stat-value" style="color:var(--success)">${formatUSD(totalAnnualProfit)}</div>
+        <div class="dist-stat-sub">All active combined</div>
+      </div>
+    `;
   }
 
   function renderNicheDistChart(forSale, sold) {
@@ -3411,10 +3509,1180 @@
   }
 
   // =====================================================================
+  //  BUYER'S vs SELLER'S MARKET INDICATOR
+  // =====================================================================
+  function renderMarketSignal(forSale, sold, md) {
+    const el = dom.marketSignalContainer;
+    if (!el) return;
+
+    const askingMultiples = forSale.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+    const soldMultiples = sold.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+
+    const medianAsking = median(askingMultiples);
+    const medianSold = median(soldMultiples);
+    const avgAsking = robustAvg(askingMultiples);
+    const avgSold = robustAvg(soldMultiples);
+
+    const gap = medianAsking - medianSold;
+    const gapPct = medianSold > 0 ? (gap / medianSold * 100) : 0;
+
+    // Compute avg discount from sold data (where we can compare asking vs sold)
+    const soldPrices = sold.map(l => parseFloat(l.listing_price || 0)).filter(p => p > 0);
+    const askingPrices = forSale.map(l => parseFloat(l.listing_price || 0)).filter(p => p > 0);
+    const medianAskingPrice = median(askingPrices);
+    const medianSoldPrice = median(soldPrices);
+
+    // Market signal
+    let signal, signalClass, signalDesc;
+    if (gapPct > 15) {
+      signal = "Strong Buyer's Market";
+      signalClass = 'signal-buyers';
+      signalDesc = `Sellers are asking ${formatPercent(gapPct)} above what buyers actually pay. Lots of negotiation room — be aggressive with offers.`;
+    } else if (gapPct > 5) {
+      signal = "Moderate Buyer's Market";
+      signalClass = 'signal-buyers';
+      signalDesc = `Asking multiples are ${formatPercent(gapPct)} above sold multiples. Some negotiation room exists — counter-offer below asking.`;
+    } else if (gapPct > -5) {
+      signal = 'Balanced Market';
+      signalClass = 'signal-neutral';
+      signalDesc = 'Asking and sold multiples are closely aligned. Fair pricing — expect modest negotiation room.';
+    } else {
+      signal = "Seller's Market";
+      signalClass = 'signal-sellers';
+      signalDesc = 'Businesses are selling at or above asking multiples. Competition among buyers is high — act fast on good deals.';
+    }
+
+    const supplyDemand = sold.length > 0 ? (forSale.length / sold.length).toFixed(2) : '--';
+
+    el.innerHTML = `
+      <div class="signal-verdict ${signalClass}">
+        <div class="signal-verdict-label">${signal}</div>
+        <div class="signal-verdict-desc">${signalDesc}</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-card-title">Median Asking Multiple</div>
+        <div class="signal-card-value">${formatMultiple(medianAsking)}</div>
+        <div class="signal-card-sub">Avg: ${formatMultiple(avgAsking)}</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-card-title">Median Sold Multiple</div>
+        <div class="signal-card-value" style="color:var(--success)">${formatMultiple(medianSold)}</div>
+        <div class="signal-card-sub">Avg: ${formatMultiple(avgSold)}</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-card-title">Multiple Gap</div>
+        <div class="signal-card-value" style="color:${gapPct > 5 ? 'var(--success)' : gapPct < -5 ? 'var(--danger)' : 'var(--warning)'}">${gap > 0 ? '+' : ''}${gap.toFixed(1)}x</div>
+        <div class="signal-card-sub">${gapPct > 0 ? '+' : ''}${formatPercent(gapPct)} above sold</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-card-title">Supply / Demand Ratio</div>
+        <div class="signal-card-value">${supplyDemand}x</div>
+        <div class="signal-card-sub">${forSale.length} active / ${sold.length} sold</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-card-title">Median Asking Price</div>
+        <div class="signal-card-value">${formatUSD(medianAskingPrice)}</div>
+        <div class="signal-card-sub">vs ${formatUSD(medianSoldPrice)} sold</div>
+      </div>
+    `;
+  }
+
+  // =====================================================================
+  //  HISTORICAL MULTIPLE TRENDS
+  // =====================================================================
+  function renderHistoricalTrends(sold) {
+    destroyChart('multipleTrends');
+    destroyChart('volumeTrends');
+    const canvasMult = $('#chart-multiple-trends');
+    const canvasVol = $('#chart-volume-trends');
+    if (!canvasMult && !canvasVol) return;
+
+    // Group sold listings by quarter
+    const quarters = {};
+    sold.forEach(l => {
+      const soldDate = l.sold_date || l.sold_at || l.updated_at;
+      if (!soldDate) return;
+      const d = new Date(soldDate);
+      if (isNaN(d.getTime())) return;
+      const q = `${d.getFullYear()} Q${Math.floor(d.getMonth() / 3) + 1}`;
+      if (!quarters[q]) quarters[q] = { multiples: [], prices: [], count: 0, date: d };
+      const mult = parseFloat(l.listing_multiple || 0);
+      const price = parseFloat(l.listing_price || 0);
+      if (mult > 0) quarters[q].multiples.push(mult);
+      if (price > 0) quarters[q].prices.push(price);
+      quarters[q].count++;
+    });
+
+    const sortedKeys = Object.keys(quarters).sort((a, b) => quarters[a].date - quarters[b].date);
+    // Keep last 12 quarters max
+    const keys = sortedKeys.slice(-12);
+    if (keys.length < 2) return;
+
+    const avgMultiples = keys.map(k => robustAvg(quarters[k].multiples));
+    const medMultiples = keys.map(k => median(quarters[k].multiples));
+    const volumes = keys.map(k => quarters[k].count);
+    const avgPrices = keys.map(k => robustAvg(quarters[k].prices));
+
+    if (canvasMult) {
+      state.charts.multipleTrends = new Chart(canvasMult, {
+        type: 'line',
+        data: {
+          labels: keys,
+          datasets: [
+            {
+              label: 'Median Sold Multiple',
+              data: medMultiples,
+              borderColor: 'rgba(79,134,247,0.9)',
+              backgroundColor: 'rgba(79,134,247,0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 4,
+            },
+            {
+              label: 'Avg Sold Multiple (IQR)',
+              data: avgMultiples,
+              borderColor: 'rgba(46,160,67,0.7)',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.3,
+              pointRadius: 3,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#8b949e' } },
+            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + 'x' } },
+          },
+          scales: {
+            x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+            y: { ticks: { color: '#6a737d', callback: v => v + 'x' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          },
+        },
+      });
+    }
+
+    if (canvasVol) {
+      state.charts.volumeTrends = new Chart(canvasVol, {
+        type: 'bar',
+        data: {
+          labels: keys,
+          datasets: [
+            {
+              label: 'Sales Volume',
+              data: volumes,
+              backgroundColor: 'rgba(79,134,247,0.5)',
+              borderRadius: 3,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Avg Sale Price',
+              data: avgPrices,
+              type: 'line',
+              borderColor: 'rgba(210,153,34,0.9)',
+              fill: false,
+              tension: 0.3,
+              pointRadius: 3,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#8b949e' } },
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.dataset.label + ': ' + (ctx.dataset.yAxisID === 'y1' ? formatUSD(ctx.raw) : ctx.raw)
+              }
+            },
+          },
+          scales: {
+            x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+            y: { position: 'left', ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' }, title: { display: true, text: 'Volume', color: '#6a737d' } },
+            y1: { position: 'right', ticks: { color: '#d29922', callback: v => formatUSD(v) }, grid: { display: false }, title: { display: true, text: 'Avg Price', color: '#d29922' } },
+          },
+        },
+      });
+    }
+  }
+
+  // =====================================================================
+  //  NEGOTIATION INTELLIGENCE
+  // =====================================================================
+  function renderNegotiationIntel(forSale, sold, md) {
+    const el = dom.negotiationContainer;
+    if (!el) return;
+
+    // --- By Niche: avg discount from asking ---
+    const nicheSoldData = {};
+    sold.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      const price = parseFloat(l.listing_price || 0);
+      if (mult <= 0 || price <= 0) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheSoldData[n]) nicheSoldData[n] = { multiples: [], prices: [] };
+        nicheSoldData[n].multiples.push(mult);
+        nicheSoldData[n].prices.push(price);
+      });
+    });
+
+    const nicheAskingData = {};
+    forSale.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      if (mult <= 0) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheAskingData[n]) nicheAskingData[n] = [];
+        nicheAskingData[n].push(mult);
+      });
+    });
+
+    const nicheNegotiation = Object.keys(nicheSoldData)
+      .filter(n => nicheSoldData[n].multiples.length >= 3 && nicheAskingData[n] && nicheAskingData[n].length >= 2)
+      .map(n => {
+        const askMedian = median(nicheAskingData[n]);
+        const soldMedian = median(nicheSoldData[n].multiples);
+        const discount = askMedian > 0 ? ((askMedian - soldMedian) / askMedian * 100) : 0;
+        return { name: n, askMedian, soldMedian, discount, n: nicheSoldData[n].multiples.length };
+      })
+      .filter(x => x.discount > 0)
+      .sort((a, b) => b.discount - a.discount);
+
+    // --- By Price Range ---
+    const priceBuckets = [
+      { label: 'Under $50K', min: 0, max: 50000 },
+      { label: '$50K - $100K', min: 50000, max: 100000 },
+      { label: '$100K - $250K', min: 100000, max: 250000 },
+      { label: '$250K - $500K', min: 250000, max: 500000 },
+      { label: '$500K - $1M', min: 500000, max: 1000000 },
+      { label: '$1M+', min: 1000000, max: Infinity },
+    ];
+
+    const priceRangeData = priceBuckets.map(b => {
+      const fsInRange = forSale.filter(l => {
+        const p = parseFloat(l.listing_price || 0);
+        return p >= b.min && p < b.max;
+      });
+      const sdInRange = sold.filter(l => {
+        const p = parseFloat(l.listing_price || 0);
+        return p >= b.min && p < b.max;
+      });
+      const askMults = fsInRange.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+      const soldMults = sdInRange.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+      const askMedian = median(askMults);
+      const soldMedian = median(soldMults);
+      const discount = askMedian > 0 ? ((askMedian - soldMedian) / askMedian * 100) : 0;
+      return { label: b.label, askMedian, soldMedian, discount, soldCount: soldMults.length };
+    }).filter(d => d.soldCount >= 3);
+
+    // --- By Days on Market ---
+    const domBuckets = [
+      { label: '0-30 days', min: 0, max: 30 },
+      { label: '30-60 days', min: 30, max: 60 },
+      { label: '60-90 days', min: 60, max: 90 },
+      { label: '90+ days', min: 90, max: 9999 },
+    ];
+
+    const now = Date.now();
+    const domData = domBuckets.map(b => {
+      const listings = forSale.filter(l => {
+        const listedAt = l.first_listed_at || l.created_at;
+        if (!listedAt) return false;
+        const days = (now - new Date(listedAt).getTime()) / (1000 * 60 * 60 * 24);
+        return days >= b.min && days < b.max;
+      });
+      const count = listings.length;
+      const mults = listings.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+      const avgMult = robustAvg(mults);
+      return { label: b.label, count, avgMult };
+    });
+
+    el.innerHTML = `
+      <div class="negotiation-section-title">Typical Discount by Niche (Asking vs Sold Multiple)</div>
+      <div class="negotiation-grid">
+        ${nicheNegotiation.slice(0, 12).map(n => `
+          <div class="negotiation-card">
+            <h4>${escapeHtml(n.name)}</h4>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Median Asking</span>
+              <span class="negotiation-stat-value">${formatMultiple(n.askMedian)}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Median Sold</span>
+              <span class="negotiation-stat-value" style="color:var(--success)">${formatMultiple(n.soldMedian)}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Avg Discount</span>
+              <span class="negotiation-stat-value" style="color:var(--accent)">${formatPercent(n.discount)}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Sold Comps</span>
+              <span class="negotiation-stat-value">${n.n}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="negotiation-section-title" style="margin-top:24px">Negotiation Room by Price Range</div>
+      <div class="negotiation-grid">
+        ${priceRangeData.map(d => `
+          <div class="negotiation-card">
+            <h4>${d.label}</h4>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Asking Multiple</span>
+              <span class="negotiation-stat-value">${formatMultiple(d.askMedian)}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Sold Multiple</span>
+              <span class="negotiation-stat-value" style="color:var(--success)">${formatMultiple(d.soldMedian)}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Negotiation Room</span>
+              <span class="negotiation-stat-value" style="color:var(--accent)">${d.discount > 0 ? formatPercent(d.discount) : 'Minimal'}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="negotiation-section-title" style="margin-top:24px">Listing Inventory by Time on Market</div>
+      <div class="negotiation-grid">
+        ${domData.map(d => `
+          <div class="negotiation-card">
+            <h4>${d.label}</h4>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Active Listings</span>
+              <span class="negotiation-stat-value">${d.count}</span>
+            </div>
+            <div class="negotiation-stat">
+              <span class="negotiation-stat-label">Avg Multiple</span>
+              <span class="negotiation-stat-value">${formatMultiple(d.avgMult)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // =====================================================================
+  //  MOTIVATED SELLER DETECTOR
+  // =====================================================================
+  function renderMotivatedSellers(forSale, md) {
+    const table = dom.motivatedSellersTable;
+    if (!table) return;
+
+    const now = Date.now();
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const multiple = parseFloat(l.listing_multiple || 0);
+      const listedAt = l.first_listed_at || l.created_at;
+      const daysOnMarket = listedAt ? Math.max(0, Math.round((now - new Date(listedAt).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+      // Compare multiple to niche median
+      const nicheMults = niches.flatMap(n => (md.nicheAcc[n] || { multiple: [] }).multiple);
+      const nicheMedianMult = median(nicheMults);
+      const overpriceRatio = nicheMedianMult > 0 && multiple > 0 ? ((multiple - nicheMedianMult) / nicheMedianMult * 100) : 0;
+
+      // Motivation score: higher = more motivated
+      const daysFactor = Math.min(40, daysOnMarket * 0.4);
+      const overpriceFactor = Math.min(30, Math.max(0, overpriceRatio * 0.6));
+      const motivationScore = Math.round(daysFactor + overpriceFactor);
+
+      return {
+        _name: `#${num}`, _num: num, _niches: niches.join(', '),
+        price, profit, multiple, daysOnMarket,
+        nicheMedianMult, overpriceRatio, motivationScore,
+        annualROI: multiple > 0 ? (12 / multiple) * 100 : 0,
+      };
+    })
+    .filter(r => r.daysOnMarket >= 30 && r.overpriceRatio > 0 && r.profit > 0)
+    .sort((a, b) => b.motivationScore - a.motivationScore)
+    .slice(0, 40);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: '_niches', label: 'Niche', render: r => escapeHtml(r._niches) },
+      { key: 'daysOnMarket', label: 'Days Listed', render: r => `<span class="dom-badge ${r.daysOnMarket > 90 ? 'dom-stale' : 'dom-aging'}">${r.daysOnMarket}d</span>` },
+      { key: 'multiple', label: 'Asking Mult.', render: r => formatMultiple(r.multiple) },
+      { key: 'nicheMedianMult', label: 'Niche Median', render: r => formatMultiple(r.nicheMedianMult) },
+      { key: 'overpriceRatio', label: 'Over Niche %', render: r => `<span style="color:var(--danger)">+${formatPercent(r.overpriceRatio)}</span>` },
+      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
+      { key: 'profit', label: 'Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.profit) },
+      { key: 'motivationScore', label: 'Motivation', render: r => `<span class="motivated-badge ${r.motivationScore >= 40 ? 'motivated-hot' : 'motivated-warm'}">${r.motivationScore}/70</span>` },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'motivationScore', 'desc');
+  }
+
+  // =====================================================================
+  //  PORTFOLIO DIVERSIFICATION (Favorites tab)
+  // =====================================================================
+  function renderPortfolioDiversification() {
+    const el = dom.portfolioDiversification;
+    if (!el) return;
+
+    const favs = Object.values(state.favorites);
+    if (favs.length < 2) {
+      el.classList.add('hidden');
+      return;
+    }
+    el.classList.remove('hidden');
+
+    const totalCost = favs.reduce((s, l) => s + parseFloat(l.listing_price || 0), 0);
+    const totalMonthlyProfit = favs.reduce((s, l) => s + parseFloat(l.average_monthly_net_profit || 0), 0);
+    const totalAnnualProfit = totalMonthlyProfit * 12;
+    const portfolioROI = totalCost > 0 ? (totalAnnualProfit / totalCost * 100) : 0;
+    const avgPayback = totalCost > 0 && totalAnnualProfit > 0 ? (totalCost / totalAnnualProfit) : 0;
+
+    // Niche diversity
+    const allNiches = favs.flatMap(l => getNicheNames(l));
+    const nicheCountMap = {};
+    allNiches.forEach(n => { nicheCountMap[n] = (nicheCountMap[n] || 0) + 1; });
+    const uniqueNiches = Object.keys(nicheCountMap);
+    const duplicateNiches = uniqueNiches.filter(n => nicheCountMap[n] > 1);
+
+    // Monetization diversity
+    const allMons = favs.flatMap(l => getMonetizationNames(l));
+    const monCountMap = {};
+    allMons.forEach(m => { monCountMap[m] = (monCountMap[m] || 0) + 1; });
+    const uniqueMons = Object.keys(monCountMap);
+    const duplicateMons = uniqueMons.filter(m => monCountMap[m] > 1);
+
+    // Concentration risk (Herfindahl index)
+    const priceFractions = favs.map(l => {
+      const p = parseFloat(l.listing_price || 0);
+      return totalCost > 0 ? (p / totalCost) : 0;
+    });
+    const hhi = priceFractions.reduce((s, f) => s + f * f, 0);
+    // HHI: 1/n = perfect diversification, 1 = single holding
+    const diversificationScore = Math.round((1 - hhi) * 100);
+
+    // Risk assessment
+    let riskLevel, riskColor;
+    if (diversificationScore >= 60 && uniqueNiches.length >= 3) {
+      riskLevel = 'Well Diversified';
+      riskColor = 'var(--success)';
+    } else if (diversificationScore >= 40 || uniqueNiches.length >= 2) {
+      riskLevel = 'Moderate Concentration';
+      riskColor = 'var(--warning)';
+    } else {
+      riskLevel = 'High Concentration Risk';
+      riskColor = 'var(--danger)';
+    }
+
+    el.innerHTML = `
+      <div class="portfolio-title">Portfolio Diversification Analysis (${favs.length} businesses)</div>
+      <div class="portfolio-stats">
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Total Investment</div>
+          <div class="portfolio-stat-value">${formatUSD(totalCost)}</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Combined Annual Profit</div>
+          <div class="portfolio-stat-value" style="color:var(--success)">${formatUSD(totalAnnualProfit)}</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Portfolio ROI</div>
+          <div class="portfolio-stat-value" style="color:var(--accent)">${formatPercent(portfolioROI)}</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Avg Payback</div>
+          <div class="portfolio-stat-value">${avgPayback > 0 ? avgPayback.toFixed(1) + ' years' : '--'}</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Unique Niches</div>
+          <div class="portfolio-stat-value">${uniqueNiches.length}</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-label">Diversification</div>
+          <div class="portfolio-stat-value" style="color:${riskColor}">${riskLevel}</div>
+        </div>
+      </div>
+      <div class="portfolio-risk-bar">
+        <div class="portfolio-risk-fill" style="width:${diversificationScore}%;background:${riskColor}"></div>
+      </div>
+      ${duplicateNiches.length > 0 ? `
+        <div class="portfolio-overlap">
+          <div class="portfolio-overlap-title">Overlapping Niches (concentration risk)</div>
+          <div class="portfolio-tags">
+            ${duplicateNiches.map(n => `<span class="portfolio-tag portfolio-tag-warn">${escapeHtml(n)} (${nicheCountMap[n]}x)</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+      <div class="portfolio-overlap" style="margin-top:10px">
+        <div class="portfolio-overlap-title">Coverage</div>
+        <div class="portfolio-tags">
+          ${uniqueNiches.map(n => `<span class="portfolio-tag">${escapeHtml(n)}</span>`).join('')}
+          ${uniqueMons.map(m => `<span class="portfolio-tag" style="background:var(--success-bg);color:var(--success)">${escapeHtml(m)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // =====================================================================
+  //  LISTING DEEP DIVE
+  // =====================================================================
+  function openDeepDive() {
+    dom.deepDiveOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    populateDeepDiveSelect();
+  }
+
+  function closeDeepDive() {
+    dom.deepDiveOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
+    destroyChart('ddRadar');
+    destroyChart('ddCashflow');
+  }
+
+  function populateDeepDiveSelect() {
+    const select = dom.deepDiveSelect;
+    if (!select) return;
+    const allListings = [
+      ...(state.dashboardData?.forSale || []),
+      ...(state.dashboardData?.sold || []),
+    ];
+    select.innerHTML = '<option value="">Select a listing...</option>';
+    allListings
+      .sort((a, b) => (b.listing_number || 0) - (a.listing_number || 0))
+      .forEach(l => {
+        const num = l.listing_number || l.id;
+        const niches = getNicheNames(l).join(', ');
+        const price = formatUSD(parseFloat(l.listing_price || 0));
+        const status = (l.listing_status || '').includes('Sold') ? ' [SOLD]' : '';
+        const opt = document.createElement('option');
+        opt.value = num;
+        opt.textContent = `#${num} — ${niches || 'N/A'} — ${price}${status}`;
+        select.appendChild(opt);
+      });
+  }
+
+  function filterDeepDiveSelect(query) {
+    const select = dom.deepDiveSelect;
+    const options = select.querySelectorAll('option');
+    const q = query.toLowerCase();
+    options.forEach(opt => {
+      if (!opt.value) return;
+      opt.hidden = !opt.textContent.toLowerCase().includes(q);
+    });
+  }
+
+  function renderDeepDive(listingId) {
+    const allListings = [
+      ...(state.dashboardData?.forSale || []),
+      ...(state.dashboardData?.sold || []),
+    ];
+    const listing = allListings.find(l => String(l.listing_number || l.id) === String(listingId));
+    if (!listing) {
+      dom.deepDiveBody.innerHTML = '<div class="deep-dive-empty"><p>Listing not found.</p></div>';
+      return;
+    }
+
+    const forSale = state.dashboardData?.forSale || [];
+    const sold = state.dashboardData?.sold || [];
+    const md = state.marketData;
+    if (!md) return;
+
+    const num = listing.listing_number || listing.id;
+    const niches = getNicheNames(listing);
+    const mons = getMonetizationNames(listing);
+    const price = parseFloat(listing.listing_price || 0);
+    const profit = parseFloat(listing.average_monthly_net_profit || 0);
+    const revenue = parseFloat(listing.average_monthly_gross_revenue || 0);
+    const multiple = parseFloat(listing.listing_multiple || 0);
+    const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+    const hours = listing.hours_worked_per_week;
+    const ageMonths = getAgeMonths(listing);
+    const isSold = (listing.listing_status || '').toLowerCase().includes('sold');
+
+    const { score, breakdown } = calculateDealScore(listing, md);
+    const risk = calculateRisk(listing, md);
+    const rep = calculateReplicability(listing, md);
+
+    // Percentile computation
+    function percentile(val, arr) {
+      if (!arr.length || val == null) return 0;
+      const below = arr.filter(v => v < val).length;
+      return Math.round((below / arr.length) * 100);
+    }
+
+    const allPrices = forSale.map(l => parseFloat(l.listing_price || 0)).filter(p => p > 0);
+    const allProfits = forSale.map(l => parseFloat(l.average_monthly_net_profit || 0)).filter(p => p > 0);
+    const allMultiples = forSale.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
+    const allMargins = forSale.map(l => {
+      const r = parseFloat(l.average_monthly_gross_revenue || 0);
+      const p = parseFloat(l.average_monthly_net_profit || 0);
+      return r > 0 ? (p / r * 100) : 0;
+    }).filter(m => m > 0);
+    const allHours = forSale.map(l => l.hours_worked_per_week).filter(h => h != null && h >= 0);
+    const allAges = forSale.map(l => getAgeMonths(l)).filter(a => a > 0);
+
+    const pctPrice = percentile(price, allPrices);
+    const pctProfit = percentile(profit, allProfits);
+    const pctMultiple = percentile(multiple, allMultiples);
+    const pctMargin = percentile(margin, allMargins);
+    const pctHours = hours != null ? 100 - percentile(hours, allHours) : null; // Invert: lower hours = better
+    const pctAge = percentile(ageMonths, allAges);
+
+    // Niche comparison
+    const nicheAcc = niches.flatMap(n => md.nicheAcc[n] ? [md.nicheAcc[n]] : []);
+    const nicheAvgProfit = robustAvg(nicheAcc.flatMap(a => a.profit));
+    const nicheAvgRevenue = robustAvg(nicheAcc.flatMap(a => a.revenue));
+    const nicheMedianMult = median(nicheAcc.flatMap(a => a.multiple));
+    const nicheMedianPrice = median(nicheAcc.flatMap(a => a.price));
+    const nicheMedianHours = median(nicheAcc.flatMap(a => a.hours));
+
+    // Comparable sold
+    const soldByNiche = {};
+    sold.forEach(l => getNicheNames(l).forEach(n => {
+      if (!soldByNiche[n]) soldByNiche[n] = [];
+      soldByNiche[n].push(l);
+    }));
+    const comps = niches.flatMap(n => soldByNiche[n] || [])
+      .map(c => {
+        const cProfit = parseFloat(c.average_monthly_net_profit || 0);
+        const cPrice = parseFloat(c.listing_price || 0);
+        const cMult = parseFloat(c.listing_multiple || 0);
+        const similarity = profit > 0 && cProfit > 0 ? 1 - Math.abs(profit - cProfit) / Math.max(profit, cProfit) : 0;
+        return { num: c.listing_number || c.id, profit: cProfit, price: cPrice, multiple: cMult, similarity };
+      })
+      .filter(c => c.similarity > 0.2 && c.profit > 0)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 5);
+
+    const annualProfit = profit * 12;
+    const annualROI = price > 0 ? (annualProfit / price * 100) : 0;
+    const paybackYears = annualProfit > 0 ? (price / annualProfit) : 0;
+
+    function pctColor(pct) {
+      if (pct >= 75) return 'var(--success)';
+      if (pct >= 50) return 'var(--accent)';
+      if (pct >= 25) return 'var(--warning)';
+      return 'var(--danger)';
+    }
+
+    function vsNiche(val, nicheVal, isMoney) {
+      if (!nicheVal || nicheVal === 0) return '--';
+      const diff = ((val - nicheVal) / nicheVal * 100);
+      const sign = diff > 0 ? '+' : '';
+      return `<span style="color:${diff > 0 ? 'var(--success)' : 'var(--danger)'}">${sign}${diff.toFixed(0)}% vs niche</span>`;
+    }
+
+    dom.deepDiveBody.innerHTML = `
+      <div class="dd-hero">
+        <div class="dd-hero-left">
+          <div class="dd-hero-title">
+            <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener">#${escapeHtml(String(num))}</a>
+            ${isSold ? '<span class="status-badge status-sold" style="margin-left:8px">Sold</span>' : '<span class="status-badge status-for-sale" style="margin-left:8px">For Sale</span>'}
+          </div>
+          <div class="dd-hero-subtitle">
+            ${niches.map(n => escapeHtml(n)).join(', ') || 'N/A'} &mdash; ${mons.map(m => escapeHtml(m)).join(', ') || 'N/A'}
+          </div>
+          <div class="dd-hero-stats">
+            <div class="dd-stat">
+              <span class="dd-stat-label">Price</span>
+              <span class="dd-stat-value">${formatUSD(price)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Monthly Profit</span>
+              <span class="dd-stat-value" style="color:var(--success)">${formatUSD(profit)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Annual Profit</span>
+              <span class="dd-stat-value" style="color:var(--success)">${formatUSD(annualProfit)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Monthly Revenue</span>
+              <span class="dd-stat-value">${formatUSD(revenue)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Multiple</span>
+              <span class="dd-stat-value">${formatMultiple(multiple)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Profit Margin</span>
+              <span class="dd-stat-value">${formatPercent(margin)}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Hours/Week</span>
+              <span class="dd-stat-value">${hours != null ? hours + 'h' : 'Unknown'}</span>
+            </div>
+            <div class="dd-stat">
+              <span class="dd-stat-label">Business Age</span>
+              <span class="dd-stat-value">${ageMonths >= 12 ? (ageMonths / 12).toFixed(1) + ' years' : ageMonths + ' mo'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="dd-hero-right">
+          <div class="dd-score-card">
+            <h4>Deal Score</h4>
+            <div class="dd-score-big" style="color:${getScoreColor(score)}">${score}/100</div>
+          </div>
+          <div class="dd-score-card">
+            <h4>Risk Score</h4>
+            <div class="dd-score-big" style="color:${risk.total <= 25 ? 'var(--success)' : risk.total <= 50 ? 'var(--warning)' : 'var(--danger)'}">${risk.total}/100</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary)">${getRiskLabel(risk.total)}</div>
+          </div>
+          <div class="dd-score-card">
+            <h4>AI Replicability</h4>
+            <div class="dd-score-big" style="color:${rep.replicabilityScore >= 70 ? 'var(--success)' : rep.replicabilityScore >= 50 ? 'var(--warning)' : 'var(--danger)'}">${rep.replicabilityScore}/100</div>
+            <div class="bvb-verdict ${rep.verdictClass}" style="display:inline-block;margin-top:4px">${rep.verdict}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Percentile Rankings -->
+      <div class="dd-section">
+        <div class="dd-section-title">Market Percentile Rankings (vs all active listings)</div>
+        <div class="dd-percentile-grid">
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Price (${pctPrice}th percentile)</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctPrice}%;background:${pctColor(100 - pctPrice)}"></div></div>
+            <div class="dd-percentile-values"><span>${formatUSD(allPrices[0] || 0)}</span><span class="dd-percentile-yours">${formatUSD(price)}</span><span>${formatUSD(allPrices[allPrices.length - 1] || 0)}</span></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Monthly Profit (${pctProfit}th percentile)</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctProfit}%;background:${pctColor(pctProfit)}"></div></div>
+            <div class="dd-percentile-values"><span>Low</span><span class="dd-percentile-yours">${formatUSD(profit)}</span><span>High</span></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Multiple (${pctMultiple}th percentile) ${pctMultiple < 30 ? '- Good value' : ''}</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctMultiple}%;background:${pctColor(100 - pctMultiple)}"></div></div>
+            <div class="dd-percentile-values"><span>Low</span><span class="dd-percentile-yours">${formatMultiple(multiple)}</span><span>High</span></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Profit Margin (${pctMargin}th percentile)</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctMargin}%;background:${pctColor(pctMargin)}"></div></div>
+            <div class="dd-percentile-values"><span>Low</span><span class="dd-percentile-yours">${formatPercent(margin)}</span><span>High</span></div>
+          </div>
+          ${pctHours != null ? `
+            <div class="dd-percentile-item">
+              <div class="dd-percentile-label">Efficiency (${pctHours}th percentile)</div>
+              <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctHours}%;background:${pctColor(pctHours)}"></div></div>
+              <div class="dd-percentile-values"><span>Most work</span><span class="dd-percentile-yours">${hours}h/wk</span><span>Least work</span></div>
+            </div>
+          ` : ''}
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Business Age (${pctAge}th percentile)</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${pctAge}%;background:${pctColor(pctAge)}"></div></div>
+            <div class="dd-percentile-values"><span>Newest</span><span class="dd-percentile-yours">${getBusinessAge(listing)}</span><span>Oldest</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Niche Comparison -->
+      <div class="dd-section">
+        <div class="dd-section-title">vs Niche Average (${niches.join(', ')})</div>
+        <div class="dd-percentile-grid">
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Monthly Profit</div>
+            <div class="dd-stat-value">${formatUSD(profit)} <small>${vsNiche(profit, nicheAvgProfit)}</small></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Monthly Revenue</div>
+            <div class="dd-stat-value">${formatUSD(revenue)} <small>${vsNiche(revenue, nicheAvgRevenue)}</small></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Multiple</div>
+            <div class="dd-stat-value">${formatMultiple(multiple)} <small>${vsNiche(multiple, nicheMedianMult)}</small></div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Price</div>
+            <div class="dd-stat-value">${formatUSD(price)} <small>${vsNiche(price, nicheMedianPrice)}</small></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deal Score Breakdown Radar -->
+      <div class="dd-section">
+        <div class="dd-section-title">Deal Score Breakdown</div>
+        <div class="dd-calc-grid">
+          <div class="dd-chart-container">
+            <canvas id="dd-radar-chart"></canvas>
+          </div>
+          <div class="dd-calc-results">
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">ROI Score</span><span class="dd-calc-result-value">${breakdown.roi.toFixed(1)} / 25</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Margin Score</span><span class="dd-calc-result-value">${breakdown.margin.toFixed(1)} / 20</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Age/Maturity</span><span class="dd-calc-result-value">${breakdown.age.toFixed(1)} / 15</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Niche Momentum</span><span class="dd-calc-result-value">${breakdown.momentum.toFixed(1)} / 12</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Work Efficiency</span><span class="dd-calc-result-value">${breakdown.efficiency.toFixed(1)} / 10</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Price Discount</span><span class="dd-calc-result-value">${breakdown.discount.toFixed(1)} / 10</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">SBA Bonus</span><span class="dd-calc-result-value">${breakdown.sba} / 5</span></div>
+            <div class="dd-calc-result-row"><span class="dd-calc-result-label">Trademark Bonus</span><span class="dd-calc-result-value">${breakdown.trademark} / 3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Breakdown -->
+      <div class="dd-section">
+        <div class="dd-section-title">Risk Assessment Breakdown</div>
+        <div class="dd-percentile-grid">
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Overpricing Risk</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.overpricing / 20 * 100}%;background:var(--danger)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.overpricing)}/20</div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Immaturity Risk</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.immaturity / 20 * 100}%;background:var(--warning)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.immaturity)}/20</div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Low Margin Risk</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.lowMargin / 15 * 100}%;background:var(--warning)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.lowMargin)}/15</div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Niche Saturation</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.saturation / 15 * 100}%;background:var(--accent)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.saturation)}/15</div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Effort Risk</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.effort / 15 * 100}%;background:var(--warning)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.effort)}/15</div>
+          </div>
+          <div class="dd-percentile-item">
+            <div class="dd-percentile-label">Concentration Risk</div>
+            <div class="dd-percentile-bar"><div class="dd-percentile-fill" style="width:${risk.concentration / 15 * 100}%;background:var(--accent)"></div></div>
+            <div class="dd-stat-value">${Math.round(risk.concentration)}/15</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Investment Calculator -->
+      <div class="dd-section">
+        <div class="dd-section-title">Investment Calculator</div>
+        <div class="dd-calc-grid">
+          <div class="dd-calc-inputs">
+            <div class="dd-calc-group">
+              <label>Purchase Price</label>
+              <input type="number" id="dd-calc-price" value="${Math.round(price)}" step="1000">
+            </div>
+            <div class="dd-calc-group">
+              <label>Annual Growth Rate (%)</label>
+              <input type="range" id="dd-calc-growth" min="-30" max="50" value="0" step="5">
+              <span id="dd-calc-growth-label">0%</span>
+            </div>
+            <div class="dd-calc-group">
+              <label>Hold Period (years)</label>
+              <input type="range" id="dd-calc-years" min="1" max="10" value="3" step="1">
+              <span id="dd-calc-years-label">3 years</span>
+            </div>
+            <div class="dd-calc-group">
+              <label>Exit Multiple</label>
+              <input type="number" id="dd-calc-exit-mult" value="${(multiple || 36).toFixed(0)}" step="1">
+            </div>
+            <button class="btn btn-accent btn-sm" id="dd-calc-run">Calculate</button>
+          </div>
+          <div>
+            <div class="dd-calc-results" id="dd-calc-results">
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">Monthly Cash Flow (Year 1)</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(profit)}</span></div>
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">Annual Cash Flow (Year 1)</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(annualProfit)}</span></div>
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">Payback Period</span><span class="dd-calc-result-value">${paybackYears > 0 ? paybackYears.toFixed(1) + ' years' : '--'}</span></div>
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">Annual ROI</span><span class="dd-calc-result-value" style="color:var(--accent)">${formatPercent(annualROI)}</span></div>
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">3-Year Total Cash</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(annualProfit * 3)}</span></div>
+              <div class="dd-calc-result-row"><span class="dd-calc-result-label">3-Year Total ROI</span><span class="dd-calc-result-value" style="color:var(--accent)">${price > 0 ? formatPercent(annualProfit * 3 / price * 100) : '--'}</span></div>
+            </div>
+            <div class="dd-chart-container">
+              <canvas id="dd-cashflow-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Moat & AI Analysis -->
+      ${rep.moatDetails.length || rep.aiAdvantages.length ? `
+        <div class="dd-section">
+          <div class="dd-section-title">Build vs Buy Analysis</div>
+          ${rep.moatDetails.length ? `
+            <div style="margin-bottom:12px">
+              <strong style="color:var(--danger)">Moats (hard to replicate):</strong>
+              ${rep.moatDetails.map(m => `
+                <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-weight:600">${escapeHtml(m.type)}</span>
+                  <span style="color:${m.strength === 'Very Strong' ? 'var(--danger)' : m.strength === 'Strong' ? 'var(--warning)' : 'var(--accent)'};margin-left:8px;font-size:0.8rem">${m.strength}</span>
+                  <div style="color:var(--text-secondary);font-size:0.85rem">${escapeHtml(m.desc)}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          ${rep.aiAdvantages.length ? `
+            <div>
+              <strong style="color:var(--success)">AI Advantages (easy to replicate):</strong>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                ${rep.aiAdvantages.map(a => `<span class="bvb-tag bvb-tag-ai">${escapeHtml(a)}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          <div style="margin-top:12px;padding:10px;background:var(--bg-tertiary);border-radius:var(--radius-sm)">
+            Est. Build Cost: <strong>${formatUSD(rep.estimatedBuildCost)}</strong> &bull;
+            Est. Build Time: <strong>${rep.estimatedTimeMonths} months</strong> &bull;
+            Savings vs Buy: <strong style="color:var(--success)">${formatUSD(price - rep.estimatedBuildCost)}</strong>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Comparable Sales -->
+      ${comps.length ? `
+        <div class="dd-section">
+          <div class="dd-section-title">Comparable Sold Businesses</div>
+          <div class="dd-comps-list">
+            ${comps.map(c => `
+              <div class="comp-row" style="padding:8px 0;border-bottom:1px solid var(--border)">
+                <a href="https://empireflippers.com/listing/${escapeHtml(String(c.num))}" target="_blank" rel="noopener">#${escapeHtml(String(c.num))}</a>
+                <span class="comp-detail">Sold at ${formatMultiple(c.multiple)} &bull; ${formatUSD(c.price)} &bull; ${formatUSD(c.profit)}/mo</span>
+                <span class="comp-similarity">${Math.round(c.similarity * 100)}% match</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="dd-actions">
+        <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener" class="btn btn-accent" style="text-decoration:none">View on Empire Flippers</a>
+        <button class="btn btn-secondary dd-fav-btn" data-num="${escapeHtml(String(num))}">${isFavorited(listing) ? '\u2605 Saved' : '\u2606 Save to Favorites'}</button>
+        <button class="btn btn-ghost dd-compare-btn" data-num="${escapeHtml(String(num))}">+ Add to Compare</button>
+      </div>
+    `;
+
+    // Bind investment calculator
+    bindInvestmentCalculator(listing);
+
+    // Render radar chart
+    renderDeepDiveRadar(breakdown);
+
+    // Render cash flow chart
+    renderDeepDiveCashflow(price, profit);
+
+    // Bind fav/compare buttons
+    const favBtn = dom.deepDiveBody.querySelector('.dd-fav-btn');
+    if (favBtn) {
+      favBtn.addEventListener('click', () => {
+        toggleFavorite(listing);
+        favBtn.textContent = isFavorited(listing) ? '\u2605 Saved' : '\u2606 Save to Favorites';
+      });
+    }
+    const compBtn = dom.deepDiveBody.querySelector('.dd-compare-btn');
+    if (compBtn) {
+      compBtn.addEventListener('click', () => {
+        toggleCompare(listing);
+        showToast('Added to comparison', 'success');
+      });
+    }
+  }
+
+  function renderDeepDiveRadar(breakdown) {
+    destroyChart('ddRadar');
+    const canvas = $('#dd-radar-chart');
+    if (!canvas) return;
+
+    state.charts.ddRadar = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: ['ROI', 'Margin', 'Maturity', 'Momentum', 'Efficiency', 'Value'],
+        datasets: [{
+          label: 'This Listing',
+          data: [
+            breakdown.roi / 25 * 100,
+            breakdown.margin / 20 * 100,
+            breakdown.age / 15 * 100,
+            breakdown.momentum / 12 * 100,
+            breakdown.efficiency / 10 * 100,
+            breakdown.discount / 10 * 100,
+          ],
+          borderColor: 'rgba(79,134,247,0.9)',
+          backgroundColor: 'rgba(79,134,247,0.2)',
+          borderWidth: 2,
+          pointRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { color: '#6a737d', backdropColor: 'transparent', font: { size: 9 } },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+            pointLabels: { color: '#8b949e', font: { size: 10 } },
+          },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+
+  function renderDeepDiveCashflow(buyPrice, monthlyProfit) {
+    destroyChart('ddCashflow');
+    const canvas = $('#dd-cashflow-chart');
+    if (!canvas) return;
+
+    const years = [0, 1, 2, 3, 4, 5];
+    const cumulative = years.map(y => monthlyProfit * 12 * y - buyPrice);
+
+    state.charts.ddCashflow = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: years.map(y => `Year ${y}`),
+        datasets: [{
+          label: 'Cumulative P&L',
+          data: cumulative,
+          borderColor: cumulative.map(v => v >= 0 ? 'rgba(46,160,67,0.9)' : 'rgba(218,54,51,0.9)'),
+          segment: {
+            borderColor: ctx => {
+              const val = ctx.p1.parsed.y;
+              return val >= 0 ? 'rgba(46,160,67,0.9)' : 'rgba(218,54,51,0.9)';
+            }
+          },
+          fill: {
+            target: 'origin',
+            above: 'rgba(46,160,67,0.1)',
+            below: 'rgba(218,54,51,0.1)',
+          },
+          tension: 0.3,
+          pointRadius: 5,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+        },
+        scales: {
+          x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          y: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+        },
+      },
+    });
+  }
+
+  function bindInvestmentCalculator(listing) {
+    const growthSlider = $('#dd-calc-growth');
+    const yearsSlider = $('#dd-calc-years');
+    const growthLabel = $('#dd-calc-growth-label');
+    const yearsLabel = $('#dd-calc-years-label');
+    const calcBtn = $('#dd-calc-run');
+    const resultsEl = $('#dd-calc-results');
+
+    if (!growthSlider || !calcBtn) return;
+
+    growthSlider.addEventListener('input', () => {
+      growthLabel.textContent = growthSlider.value + '%';
+    });
+
+    yearsSlider.addEventListener('input', () => {
+      yearsLabel.textContent = yearsSlider.value + ' years';
+    });
+
+    function runCalc() {
+      const buyPrice = parseFloat($('#dd-calc-price').value) || 0;
+      const growthRate = parseFloat(growthSlider.value) / 100;
+      const holdYears = parseInt(yearsSlider.value);
+      const exitMult = parseFloat($('#dd-calc-exit-mult').value) || 0;
+      const baseProfit = parseFloat(listing.average_monthly_net_profit || 0);
+
+      let totalCash = 0;
+      const yearlyData = [];
+      for (let y = 1; y <= holdYears; y++) {
+        const yearProfit = baseProfit * 12 * Math.pow(1 + growthRate, y - 1);
+        totalCash += yearProfit;
+        yearlyData.push(yearProfit);
+      }
+
+      const exitProfit = baseProfit * Math.pow(1 + growthRate, holdYears - 1);
+      const exitValue = exitProfit * exitMult;
+      const totalReturn = totalCash + exitValue - buyPrice;
+      const totalROI = buyPrice > 0 ? (totalReturn / buyPrice * 100) : 0;
+      const payback = buyPrice > 0 && yearlyData[0] > 0 ? (buyPrice / yearlyData[0]) : 0;
+
+      resultsEl.innerHTML = `
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Year 1 Cash Flow</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(yearlyData[0] || 0)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Year ${holdYears} Cash Flow</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(yearlyData[holdYears - 1] || 0)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Total Cash Over ${holdYears}yr</span><span class="dd-calc-result-value" style="color:var(--success)">${formatUSD(totalCash)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Exit Value (${exitMult}x)</span><span class="dd-calc-result-value">${formatUSD(exitValue)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Total Return</span><span class="dd-calc-result-value" style="color:${totalReturn > 0 ? 'var(--success)' : 'var(--danger)'}">${formatUSD(totalReturn)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Total ROI</span><span class="dd-calc-result-value" style="color:var(--accent)">${formatPercent(totalROI)}</span></div>
+        <div class="dd-calc-result-row"><span class="dd-calc-result-label">Payback Period</span><span class="dd-calc-result-value">${payback > 0 ? payback.toFixed(1) + ' years' : '--'}</span></div>
+      `;
+
+      // Update cash flow chart
+      destroyChart('ddCashflow');
+      const canvas = $('#dd-cashflow-chart');
+      if (!canvas) return;
+
+      const labels = ['Buy'];
+      const cumData = [-buyPrice];
+      let running = -buyPrice;
+      for (let y = 1; y <= holdYears; y++) {
+        running += yearlyData[y - 1];
+        labels.push(`Year ${y}`);
+        cumData.push(running);
+      }
+      // Add exit
+      labels.push('Exit');
+      cumData.push(running + exitValue);
+
+      state.charts.ddCashflow = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Cumulative P&L',
+            data: cumData,
+            fill: {
+              target: 'origin',
+              above: 'rgba(46,160,67,0.1)',
+              below: 'rgba(218,54,51,0.1)',
+            },
+            segment: {
+              borderColor: ctx => ctx.p1.parsed.y >= 0 ? 'rgba(46,160,67,0.9)' : 'rgba(218,54,51,0.9)',
+            },
+            tension: 0.3,
+            pointRadius: 5,
+            pointBackgroundColor: cumData.map(v => v >= 0 ? 'rgba(46,160,67,0.9)' : 'rgba(218,54,51,0.9)'),
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+          },
+          scales: {
+            x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+            y: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          },
+        },
+      });
+    }
+
+    calcBtn.addEventListener('click', runCalc);
+  }
+
+  // Global function to open deep dive from anywhere
+  function openListingDeepDive(listingId) {
+    openDeepDive();
+    if (listingId) {
+      dom.deepDiveSelect.value = String(listingId);
+      renderDeepDive(listingId);
+    }
+  }
+
+  // =====================================================================
   //  FAVORITES TAB
   // =====================================================================
   function renderFavorites() {
     const favs = Object.values(state.favorites);
+    renderPortfolioDiversification();
     if (!favs.length) {
       dom.favoritesEmpty.classList.remove('hidden');
       dom.favoritesGrid.querySelectorAll('.fav-card').forEach(c => c.remove());
@@ -3711,6 +4979,38 @@
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeModals();
+    });
+
+    // Deep Dive
+    if (dom.deepDiveClose) {
+      dom.deepDiveClose.addEventListener('click', closeDeepDive);
+    }
+    if (dom.deepDiveOverlay) {
+      dom.deepDiveOverlay.addEventListener('click', e => {
+        if (e.target === dom.deepDiveOverlay) closeDeepDive();
+      });
+    }
+    if (dom.deepDiveSelect) {
+      dom.deepDiveSelect.addEventListener('change', () => {
+        const val = dom.deepDiveSelect.value;
+        if (val) renderDeepDive(val);
+      });
+    }
+    if (dom.deepDiveSearch) {
+      dom.deepDiveSearch.addEventListener('input', e => {
+        filterDeepDiveSelect(e.target.value);
+      });
+    }
+    if (dom.tocOpenDeepDive) {
+      dom.tocOpenDeepDive.addEventListener('click', e => {
+        e.preventDefault();
+        openDeepDive();
+      });
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !dom.deepDiveOverlay.classList.contains('hidden')) {
+        closeDeepDive();
+      }
     });
 
     // Close dropdowns on outside click
