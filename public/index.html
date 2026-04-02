@@ -79,7 +79,7 @@
       <!-- Niche Profitability Leaderboard -->
       <div class="dashboard-section">
         <h2 class="section-title">&#127919; Sector & Niche Profitability Leaderboard</h2>
-        <p class="section-subtitle">Every niche ranked by expected annual net profit. Shows avg financials based on all active + sold listings. Click column headers to sort.</p>
+        <p class="section-subtitle">Every niche ranked by avg annual net profit. Averages are computed from <strong>all listings (active + sold)</strong>. "Active" and "Sold" columns show listing counts. Click any column header to re-sort.</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="niche-leaderboard"></table>
@@ -90,11 +90,11 @@
       <!-- Niche financials charts -->
       <div class="charts-row">
         <div class="chart-card">
-          <h3>Top 15 Niches by Avg Annual Net Profit</h3>
+          <h3>Top 15 Niches by Avg Annual Net Profit (All Listings)</h3>
           <canvas id="chart-niche-profit-rank"></canvas>
         </div>
         <div class="chart-card">
-          <h3>Top 15 Niches by Annual ROI %</h3>
+          <h3>Top 15 Niches by Annual ROI % (All Listings, min 3)</h3>
           <canvas id="chart-niche-roi-rank"></canvas>
         </div>
       </div>
@@ -102,7 +102,7 @@
       <!-- Monetization Profitability Table -->
       <div class="dashboard-section">
         <h2 class="section-title">&#128176; Monetization Type Profitability</h2>
-        <p class="section-subtitle">Breakdown by business model. Which monetization types generate the most cash flow and best returns?</p>
+        <p class="section-subtitle">Breakdown by business model (all listings, active + sold). Which monetization types generate the most cash flow and best returns?</p>
         <div class="table-container">
           <div class="table-scroll">
             <table class="listings-table leaderboard-table" id="monetization-leaderboard"></table>
@@ -113,29 +113,29 @@
       <!-- Top Opportunities -->
       <div class="dashboard-section">
         <h2 class="section-title">&#127942; Top 20 Opportunities (Deal Score)</h2>
-        <p class="section-subtitle">Scored by ROI potential, profit margin, business maturity, work efficiency, niche momentum, and price discount vs. market average.</p>
+        <p class="section-subtitle">Active for-sale listings scored by ROI potential, profit margin, business maturity, work efficiency, niche momentum (from sold data), and price discount vs. market average.</p>
         <div class="opportunities-grid" id="opportunities-grid"></div>
       </div>
 
       <!-- Charts Row -->
       <div class="charts-row">
         <div class="chart-card">
-          <h3>Niche Distribution (Active vs Sold)</h3>
+          <h3>Niche Count: For Sale vs Sold</h3>
           <canvas id="chart-niche-dist"></canvas>
         </div>
         <div class="chart-card">
-          <h3>Price Distribution</h3>
+          <h3>Price Distribution (Active For Sale)</h3>
           <canvas id="chart-price-dist"></canvas>
         </div>
       </div>
 
       <div class="charts-row">
         <div class="chart-card">
-          <h3>Monthly Profit Distribution</h3>
+          <h3>Monthly Profit Distribution (Active For Sale)</h3>
           <canvas id="chart-profit-dist"></canvas>
         </div>
         <div class="chart-card">
-          <h3>Multiple Distribution (Active vs Sold)</h3>
+          <h3>Multiple Distribution: For Sale vs Sold</h3>
           <canvas id="chart-multiple-dist"></canvas>
         </div>
       </div>
@@ -143,14 +143,14 @@
       <!-- Trend Analysis -->
       <div class="dashboard-section">
         <h2 class="section-title">&#128200; Niche Momentum & Trends</h2>
-        <p class="section-subtitle">Which niches are selling the most? Where is the demand? Which have the best ROI?</p>
+        <p class="section-subtitle">Demand signal from sold listings vs active supply. "High Demand" = more sold than active (buyers are snapping them up). Financials are averages across all listings.</p>
         <div class="trends-grid" id="trends-grid"></div>
       </div>
 
       <!-- Monetization Insights -->
       <div class="dashboard-section">
         <h2 class="section-title">&#128176; Monetization Insights</h2>
-        <p class="section-subtitle">Average multiples and profit by monetization type. Lower sold multiples = better value for buyers.</p>
+        <p class="section-subtitle">Average multiples and annual profit by monetization type (all listings). Lower multiples = better value for buyers.</p>
         <div class="charts-row">
           <div class="chart-card">
             <h3>Avg Multiple by Monetization</h3>
@@ -166,7 +166,7 @@
       <!-- Wealth Builder Picks -->
       <div class="dashboard-section">
         <h2 class="section-title">&#128142; Wealth Builder Picks</h2>
-        <p class="section-subtitle">Listings with the best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
+        <p class="section-subtitle">Active for-sale listings with the best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
         <div class="wealth-picks" id="wealth-picks"></div>
       </div>
     </div>

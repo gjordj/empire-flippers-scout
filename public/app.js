@@ -1323,13 +1323,19 @@
 
   function renderNicheProfitChart(md) {
     destroyChart('nicheProfitRank');
+    const canvas = $('#chart-niche-profit-rank');
+    if (!canvas) { console.warn('chart-niche-profit-rank canvas not found'); return; }
+
     const niches = Object.keys(md.nicheAcc)
       .map(n => ({ name: n, profit: (md.nicheAvgProfit[n] || 0) * 12 }))
       .filter(n => n.profit > 0)
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 15);
 
-    state.charts.nicheProfitRank = new Chart($('#chart-niche-profit-rank'), {
+    console.log('Niche profit chart:', niches.length, 'niches');
+    if (!niches.length) return;
+
+    state.charts.nicheProfitRank = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: niches.map(n => n.name),
@@ -1341,14 +1347,15 @@
         }],
       },
       options: {
-        ...chartDefaults,
+        responsive: true,
         indexAxis: 'y',
-        plugins: { ...chartDefaults.plugins, legend: { display: false },
+        plugins: {
+          legend: { display: false },
           tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
         },
         scales: {
-          ...chartDefaults.scales,
-          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatUSD(v) } },
+          x: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
     });
@@ -1356,6 +1363,9 @@
 
   function renderNicheROIChart(md) {
     destroyChart('nicheROIRank');
+    const canvas = $('#chart-niche-roi-rank');
+    if (!canvas) { console.warn('chart-niche-roi-rank canvas not found'); return; }
+
     const niches = Object.keys(md.nicheAcc)
       .map(n => {
         const mult = md.nicheAvgMultiple[n] || 0;
@@ -1365,7 +1375,10 @@
       .sort((a, b) => b.roi - a.roi)
       .slice(0, 15);
 
-    state.charts.nicheROIRank = new Chart($('#chart-niche-roi-rank'), {
+    console.log('Niche ROI chart:', niches.length, 'niches');
+    if (!niches.length) return;
+
+    state.charts.nicheROIRank = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: niches.map(n => n.name),
@@ -1377,14 +1390,15 @@
         }],
       },
       options: {
-        ...chartDefaults,
+        responsive: true,
         indexAxis: 'y',
-        plugins: { ...chartDefaults.plugins, legend: { display: false },
+        plugins: {
+          legend: { display: false },
           tooltip: { callbacks: { label: ctx => ctx.raw + '%' } },
         },
         scales: {
-          ...chartDefaults.scales,
-          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => v + '%' } },
+          x: { ticks: { color: '#6a737d', callback: v => v + '%' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
     });
@@ -1420,13 +1434,14 @@
           </div>
           <div class="opp-card-stats">
             <div class="opp-stat"><span class="opp-stat-label">Price</span><span class="opp-stat-value">${formatUSD(price)}</span></div>
+            <div class="opp-stat"><span class="opp-stat-label">Annual Profit</span><span class="opp-stat-value profit">${formatUSD(profit * 12)}</span></div>
             <div class="opp-stat"><span class="opp-stat-label">Mo. Profit</span><span class="opp-stat-value profit">${formatUSD(profit)}</span></div>
             <div class="opp-stat"><span class="opp-stat-label">Multiple</span><span class="opp-stat-value">${formatMultiple(multiple)}</span></div>
             <div class="opp-stat"><span class="opp-stat-label">Annual ROI</span><span class="opp-stat-value highlight">${formatPercent(annualROI)}</span></div>
             <div class="opp-stat"><span class="opp-stat-label">Hrs/Wk</span><span class="opp-stat-value">${hours != null ? hours + 'h' : '--'}</span></div>
-            <div class="opp-stat"><span class="opp-stat-label">Age</span><span class="opp-stat-value">${getBusinessAge(l)}</span></div>
           </div>
           <div class="opp-card-actions">
+            <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener" class="btn btn-sm btn-accent" style="text-decoration:none">View Listing</a>
             <button class="btn btn-sm btn-secondary opp-fav-btn" data-idx="${i}">${isFavorited(l) ? '\u2605 Saved' : '\u2606 Save'}</button>
             <button class="btn btn-sm btn-ghost opp-compare-btn" data-idx="${i}">+ Compare</button>
           </div>
@@ -1459,93 +1474,115 @@
     if (state.charts[key]) { state.charts[key].destroy(); delete state.charts[key]; }
   }
 
-  const chartDefaults = {
-    responsive: true,
-    maintainAspectRatio: true,
-    plugins: {
-      legend: { labels: { color: '#8b949e', font: { size: 11 } } },
-    },
-    scales: {
-      x: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
-      y: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
-    },
-  };
+  // chartDefaults removed - using hBarOpts()/vBarOpts() builders instead
+
+  // Shared simple chart options builder (avoids object spread issues)
+  function hBarOpts(opts = {}) {
+    return {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: opts.legend !== false ? true : false, labels: { color: '#8b949e', font: { size: 11 } } },
+        tooltip: opts.tooltip || {},
+      },
+      scales: {
+        x: { ticks: { color: '#6a737d', callback: opts.xFormat || (v => v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+        y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
+      },
+    };
+  }
+
+  function vBarOpts(opts = {}) {
+    return {
+      responsive: true,
+      plugins: {
+        legend: { display: opts.legend !== false ? true : false, labels: { color: '#8b949e', font: { size: 11 } } },
+        tooltip: opts.tooltip || {},
+      },
+      scales: {
+        x: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
+        y: { ticks: { color: '#6a737d', font: { size: 10 } }, grid: { color: 'rgba(45,49,72,0.5)' } },
+      },
+    };
+  }
 
   function renderNicheDistChart(forSale, sold) {
     destroyChart('nicheDist');
-    const nicheCounts = { active: {}, sold: {} };
+    const canvas = $('#chart-niche-dist');
+    if (!canvas) return;
 
+    const nicheCounts = { active: {}, sold: {} };
     forSale.forEach(l => getNicheNames(l).forEach(n => { nicheCounts.active[n] = (nicheCounts.active[n] || 0) + 1; }));
     sold.forEach(l => getNicheNames(l).forEach(n => { nicheCounts.sold[n] = (nicheCounts.sold[n] || 0) + 1; }));
 
     const allNiches = [...new Set([...Object.keys(nicheCounts.active), ...Object.keys(nicheCounts.sold)])];
     const sorted = allNiches.sort((a, b) => ((nicheCounts.active[b] || 0) + (nicheCounts.sold[b] || 0)) - ((nicheCounts.active[a] || 0) + (nicheCounts.sold[a] || 0))).slice(0, 12);
 
-    state.charts.nicheDist = new Chart($('#chart-niche-dist'), {
+    state.charts.nicheDist = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: sorted,
         datasets: [
-          { label: 'Active', data: sorted.map(n => nicheCounts.active[n] || 0), backgroundColor: 'rgba(79,134,247,0.7)', borderRadius: 3 },
-          { label: 'Sold', data: sorted.map(n => nicheCounts.sold[n] || 0), backgroundColor: 'rgba(218,54,51,0.5)', borderRadius: 3 },
+          { label: 'For Sale (Active)', data: sorted.map(n => nicheCounts.active[n] || 0), backgroundColor: 'rgba(79,134,247,0.7)', borderRadius: 3 },
+          { label: 'Sold (Completed)', data: sorted.map(n => nicheCounts.sold[n] || 0), backgroundColor: 'rgba(218,54,51,0.5)', borderRadius: 3 },
         ],
       },
-      options: { ...chartDefaults, plugins: { ...chartDefaults.plugins }, indexAxis: 'y' },
+      options: hBarOpts(),
     });
   }
 
   function renderPriceDistChart(forSale) {
     destroyChart('priceDist');
+    const canvas = $('#chart-price-dist');
+    if (!canvas) return;
+
     const prices = forSale.map(l => parseFloat(l.listing_price || 0)).filter(p => p > 0);
     if (!prices.length) return;
 
     const buckets = [0, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, Infinity];
     const labels = [];
     const counts = [];
-
     for (let i = 0; i < buckets.length - 1; i++) {
       const lo = buckets[i], hi = buckets[i + 1];
       labels.push(hi === Infinity ? `${formatUSD(lo)}+` : `${formatUSD(lo)}-${formatUSD(hi)}`);
       counts.push(prices.filter(p => p >= lo && p < hi).length);
     }
 
-    state.charts.priceDist = new Chart($('#chart-price-dist'), {
+    state.charts.priceDist = new Chart(canvas, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [{ label: 'Listings', data: counts, backgroundColor: 'rgba(210,153,34,0.6)', borderRadius: 3 }],
-      },
-      options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } },
+      data: { labels, datasets: [{ label: 'Active Listings', data: counts, backgroundColor: 'rgba(210,153,34,0.6)', borderRadius: 3 }] },
+      options: vBarOpts({ legend: false }),
     });
   }
 
   function renderProfitDistChart(forSale) {
     destroyChart('profitDist');
+    const canvas = $('#chart-profit-dist');
+    if (!canvas) return;
+
     const profits = forSale.map(l => parseFloat(l.average_monthly_net_profit || 0)).filter(p => p > 0);
     if (!profits.length) return;
 
     const buckets = [0, 1000, 2500, 5000, 10000, 25000, 50000, 100000, Infinity];
     const labels = [];
     const counts = [];
-
     for (let i = 0; i < buckets.length - 1; i++) {
       const lo = buckets[i], hi = buckets[i + 1];
       labels.push(hi === Infinity ? `${formatUSD(lo)}+` : `${formatUSD(lo)}-${formatUSD(hi)}`);
       counts.push(profits.filter(p => p >= lo && p < hi).length);
     }
 
-    state.charts.profitDist = new Chart($('#chart-profit-dist'), {
+    state.charts.profitDist = new Chart(canvas, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [{ label: 'Listings', data: counts, backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 }],
-      },
-      options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } },
+      data: { labels, datasets: [{ label: 'Active Listings', data: counts, backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 }] },
+      options: vBarOpts({ legend: false }),
     });
   }
 
   function renderMultipleDistChart(forSale, sold) {
     destroyChart('multipleDist');
+    const canvas = $('#chart-multiple-dist');
+    if (!canvas) return;
 
     function getBucketedMultiples(listings) {
       const multiples = listings.map(l => parseFloat(l.listing_multiple || 0)).filter(m => m > 0);
@@ -1555,16 +1592,16 @@
 
     const bucketLabels = ['0-20x', '20-30x', '30-40x', '40-50x', '50-60x', '60-80x', '80-100x', '100-150x', '150x+'];
 
-    state.charts.multipleDist = new Chart($('#chart-multiple-dist'), {
+    state.charts.multipleDist = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: bucketLabels,
         datasets: [
-          { label: 'Active', data: getBucketedMultiples(forSale), backgroundColor: 'rgba(79,134,247,0.6)', borderRadius: 3 },
-          { label: 'Sold', data: getBucketedMultiples(sold), backgroundColor: 'rgba(218,54,51,0.4)', borderRadius: 3 },
+          { label: 'For Sale (Active)', data: getBucketedMultiples(forSale), backgroundColor: 'rgba(79,134,247,0.6)', borderRadius: 3 },
+          { label: 'Sold (Completed)', data: getBucketedMultiples(sold), backgroundColor: 'rgba(218,54,51,0.4)', borderRadius: 3 },
         ],
       },
-      options: chartDefaults,
+      options: vBarOpts(),
     });
   }
 
@@ -1728,11 +1765,16 @@
           <div class="wealth-reason">${reasons.length ? reasons.join(' &bull; ') : 'Strong overall metrics'}</div>
           <div class="wealth-metrics">
             <div class="wealth-metric"><span class="wealth-metric-label">Asking Price</span><span class="wealth-metric-value">${formatUSD(price)}</span></div>
+            <div class="wealth-metric"><span class="wealth-metric-label">Annual Net Profit</span><span class="wealth-metric-value" style="color:var(--success)">${formatUSD(annualProfit)}</span></div>
             <div class="wealth-metric"><span class="wealth-metric-label">Monthly Cash Flow</span><span class="wealth-metric-value" style="color:var(--success)">${formatUSD(profit)}</span></div>
             <div class="wealth-metric"><span class="wealth-metric-label">Annual Revenue</span><span class="wealth-metric-value">${formatUSD(revenue * 12)}</span></div>
             <div class="wealth-metric"><span class="wealth-metric-label">Annual ROI</span><span class="wealth-metric-value" style="color:var(--accent)">${formatPercent(annualROI)}</span></div>
             <div class="wealth-metric"><span class="wealth-metric-label">Payback Period</span><span class="wealth-metric-value">${paybackYears} years</span></div>
+            <div class="wealth-metric"><span class="wealth-metric-label">Profit Margin</span><span class="wealth-metric-value">${formatPercent(margin)}</span></div>
             <div class="wealth-metric"><span class="wealth-metric-label">Work Required</span><span class="wealth-metric-value">${hours != null ? hours + 'h/week' : 'Unknown'}</span></div>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+            <a href="https://empireflippers.com/listing/${escapeHtml(String(num))}" target="_blank" rel="noopener" class="btn btn-sm btn-accent" style="text-decoration:none">View on Empire Flippers</a>
           </div>
         </div>
       `;
