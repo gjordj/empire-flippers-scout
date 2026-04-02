@@ -72,6 +72,8 @@
             <a href="#sec-niche-charts" class="toc-link">Niche Charts</a>
             <a href="#sec-niche-growth" class="toc-link">Growth Radar</a>
             <a href="#sec-trends" class="toc-link">Momentum</a>
+            <a href="#sec-smart-money" class="toc-link">Smart Money</a>
+            <a href="#sec-niche-momentum" class="toc-link">Niche Shifts</a>
             <a href="#sec-monetization" class="toc-link">Monetization</a>
             <a href="#sec-monetization-insights" class="toc-link">Monetization Charts</a>
           </div>
@@ -100,6 +102,7 @@
             <a href="#sec-sale-prob" class="toc-link">Sale Probability</a>
             <a href="#sec-days-on-market" class="toc-link">Days on Market</a>
             <a href="#sec-negotiation" class="toc-link">Negotiation Intel</a>
+            <a href="#sec-price-anchoring" class="toc-link">Price Anchoring</a>
             <a href="#sec-motivated" class="toc-link">Motivated Sellers</a>
             <a href="#sec-budget" class="toc-link">Budget Optimizer</a>
           </div>
@@ -110,6 +113,7 @@
             <a href="#sec-flip" class="toc-link">Flip Analyzer</a>
             <a href="#sec-scatter" class="toc-link">Margin vs Price</a>
             <a href="#sec-roi" class="toc-link">ROI Projections</a>
+            <a href="#sec-exit-timing" class="toc-link">Exit Timing</a>
           </div>
         </div>
         <div class="toc-group">
@@ -267,6 +271,21 @@
         <div class="trends-grid" id="trends-grid"></div>
       </div>
 
+      <div class="dashboard-section" id="sec-smart-money">
+        <h2 class="section-title">Smart Money Tracker</h2>
+        <p class="section-subtitle">Which niches sell fastest AND at the highest multiples? That's where experienced buyers are competing hardest. Fast sales + premium prices = hot demand.</p>
+        <div class="smart-money-grid" id="smart-money-grid"></div>
+      </div>
+
+      <div class="dashboard-section" id="sec-niche-momentum">
+        <h2 class="section-title">Niche Quarterly Shifts</h2>
+        <p class="section-subtitle">How each niche changed this quarter vs last. Rising supply + falling multiples = cooling off. Falling supply + rising multiples = heating up.</p>
+        <div class="chart-card chart-card-wide">
+          <canvas id="chart-niche-shifts"></canvas>
+        </div>
+        <div class="niche-shifts-cards" id="niche-shifts-cards"></div>
+      </div>
+
       <div class="dashboard-section" id="sec-monetization">
         <h2 class="section-title">Monetization Type Profitability</h2>
         <p class="section-subtitle">Breakdown by business model. Which monetization types generate the best cash flow and returns?</p>
@@ -398,6 +417,24 @@
         <div class="negotiation-container" id="negotiation-container"></div>
       </div>
 
+      <div class="dashboard-section" id="sec-price-anchoring">
+        <h2 class="section-title">Price Anchoring Analysis</h2>
+        <p class="section-subtitle">How much below asking price do businesses actually sell for? Broken down by size. Use this to know exactly how aggressive your offer should be.</p>
+        <div class="chart-pair">
+          <div class="chart-card chart-card-wide">
+            <h3 class="chart-card-title">Discount from Asking Price by Size</h3>
+            <p class="chart-card-subtitle">Avg % below asking that buyers actually paid</p>
+            <canvas id="chart-price-anchoring"></canvas>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <h3 class="chart-card-title">Asking vs Sold Multiple by Size</h3>
+            <p class="chart-card-subtitle">How much the multiple drops from listing to sale</p>
+            <canvas id="chart-multiple-anchoring"></canvas>
+          </div>
+        </div>
+        <div class="anchoring-summary" id="anchoring-summary"></div>
+      </div>
+
       <div class="dashboard-section" id="sec-motivated">
         <h2 class="section-title">Motivated Seller Detector</h2>
         <p class="section-subtitle">Listings sitting unsold AND priced above their niche median. These sellers are most likely to accept a lower offer. Your best negotiation targets.</p>
@@ -459,6 +496,15 @@
             <table class="listings-table leaderboard-table" id="roi-projections-table"></table>
           </div>
         </div>
+      </div>
+
+      <div class="dashboard-section" id="sec-exit-timing">
+        <h2 class="section-title">Exit Timing Optimizer</h2>
+        <p class="section-subtitle">Based on historical sold data: which quarter gets the best sale multiples for each niche? Time your flip for maximum exit price.</p>
+        <div class="chart-card chart-card-wide">
+          <canvas id="chart-exit-timing"></canvas>
+        </div>
+        <div class="exit-timing-cards" id="exit-timing-cards"></div>
       </div>
 
       <!-- ============================================================ -->

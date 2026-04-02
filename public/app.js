@@ -1321,6 +1321,10 @@
       ['HistoricalTrends', () => renderHistoricalTrends(sold)],
       ['NegotiationIntel', () => renderNegotiationIntel(forSale, sold, md)],
       ['MotivatedSellers', () => renderMotivatedSellers(forSale, md)],
+      ['SmartMoney', () => renderSmartMoney(sold, md)],
+      ['NicheShifts', () => renderNicheShifts(forSale, sold)],
+      ['PriceAnchoring', () => renderPriceAnchoring(forSale, sold)],
+      ['ExitTiming', () => renderExitTiming(sold)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -4044,6 +4048,457 @@
     ];
 
     buildSortableLeaderboard(table, columns, rows, 'motivationScore', 'desc');
+  }
+
+  // =====================================================================
+  //  SMART MONEY TRACKER
+  // =====================================================================
+  function renderSmartMoney(sold, md) {
+    const grid = $('#smart-money-grid');
+    if (!grid) return;
+
+    const now = Date.now();
+    // Group sold by niche: avg days to sell + avg sold multiple
+    const nicheStats = {};
+    sold.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      const listedAt = l.first_listed_at || l.created_at;
+      const soldAt = l.sold_date || l.sold_at || l.updated_at;
+      if (mult <= 0 || !listedAt || !soldAt) return;
+      const daysToSell = Math.max(0, Math.round((new Date(soldAt).getTime() - new Date(listedAt).getTime()) / (1000 * 60 * 60 * 24)));
+      if (daysToSell > 365) return; // skip outliers
+      const price = parseFloat(l.listing_price || 0);
+      getNicheNames(l).forEach(n => {
+        if (!nicheStats[n]) nicheStats[n] = { days: [], multiples: [], prices: [], count: 0 };
+        nicheStats[n].days.push(daysToSell);
+        nicheStats[n].multiples.push(mult);
+        nicheStats[n].prices.push(price);
+        nicheStats[n].count++;
+      });
+    });
+
+    const ranked = Object.entries(nicheStats)
+      .filter(([n, s]) => s.count >= 5)
+      .map(([name, s]) => {
+        const avgDays = Math.round(s.days.reduce((a, b) => a + b, 0) / s.days.length);
+        const medMult = median(s.multiples);
+        const avgPrice = Math.round(s.prices.reduce((a, b) => a + b, 0) / s.prices.length);
+        // Smart money score: high multiple AND fast sale = hot demand
+        // Normalize: lower days = better, higher multiple = better
+        const dayScore = Math.max(0, 100 - avgDays); // 0 days = 100, 100 days = 0
+        const multScore = Math.min(100, medMult * 1.5); // 60x mult = 90 score
+        const score = (dayScore * 0.6) + (multScore * 0.4);
+        return { name, avgDays, medMult, avgPrice, count: s.count, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+
+    if (!ranked.length) { grid.innerHTML = '<p style="color:var(--text-secondary)">Not enough sold data.</p>'; return; }
+
+    grid.innerHTML = ranked.map((r, i) => {
+      const heat = r.score >= 70 ? 'hot' : r.score >= 50 ? 'warm' : 'cool';
+      return `
+        <div class="smart-money-card smart-money-${heat}">
+          <div class="smart-money-name">${escapeHtml(r.name)}</div>
+          <div class="smart-money-stats">
+            <div><span class="smart-money-stat-label">Avg Days to Sell</span><br><span class="smart-money-stat-value">${r.avgDays}d</span></div>
+            <div><span class="smart-money-stat-label">Median Multiple</span><br><span class="smart-money-stat-value">${r.medMult.toFixed(1)}x</span></div>
+            <div><span class="smart-money-stat-label">Avg Sale Price</span><br><span class="smart-money-stat-value">${formatUSD(r.avgPrice)}</span></div>
+            <div><span class="smart-money-stat-label">Sales (n)</span><br><span class="smart-money-stat-value">${r.count}</span></div>
+          </div>
+          <span class="smart-money-badge smart-money-badge-${heat}">${heat === 'hot' ? 'High Demand' : heat === 'warm' ? 'Moderate Demand' : 'Normal Demand'}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // =====================================================================
+  //  NICHE QUARTERLY SHIFTS
+  // =====================================================================
+  function renderNicheShifts(forSale, sold) {
+    destroyChart('nicheShifts');
+    const canvas = $('#chart-niche-shifts');
+    const cardsEl = $('#niche-shifts-cards');
+    if (!canvas && !cardsEl) return;
+
+    // Determine current and previous quarter
+    const now = new Date();
+    const curQ = Math.floor(now.getMonth() / 3);
+    const curYear = now.getFullYear();
+    const prevQ = curQ === 0 ? 3 : curQ - 1;
+    const prevYear = curQ === 0 ? curYear - 1 : curYear;
+
+    function getQuarter(dateStr) {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      return { q: Math.floor(d.getMonth() / 3), y: d.getFullYear() };
+    }
+
+    function isInQuarter(dateStr, q, y) {
+      const qd = getQuarter(dateStr);
+      return qd && qd.q === q && qd.y === y;
+    }
+
+    const qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const curLabel = qLabels[curQ] + ' ' + curYear;
+    const prevLabel = qLabels[prevQ] + ' ' + prevYear;
+
+    // Count listings and multiples per niche per quarter
+    const nicheData = {};
+
+    function addToNiche(n, quarter, mult) {
+      if (!nicheData[n]) nicheData[n] = { cur: { count: 0, multiples: [] }, prev: { count: 0, multiples: [] } };
+      if (quarter === 'cur') { nicheData[n].cur.count++; if (mult > 0) nicheData[n].cur.multiples.push(mult); }
+      if (quarter === 'prev') { nicheData[n].prev.count++; if (mult > 0) nicheData[n].prev.multiples.push(mult); }
+    }
+
+    // Use sold data for quarter analysis
+    sold.forEach(l => {
+      const soldDate = l.sold_date || l.sold_at || l.updated_at;
+      const mult = parseFloat(l.listing_multiple || 0);
+      const niches = getNicheNames(l);
+      if (isInQuarter(soldDate, curQ, curYear)) niches.forEach(n => addToNiche(n, 'cur', mult));
+      if (isInQuarter(soldDate, prevQ, prevYear)) niches.forEach(n => addToNiche(n, 'prev', mult));
+    });
+
+    // Also count currently active listings as current quarter supply
+    forSale.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      getNicheNames(l).forEach(n => {
+        if (!nicheData[n]) nicheData[n] = { cur: { count: 0, multiples: [] }, prev: { count: 0, multiples: [] } };
+        nicheData[n].cur.count++;
+        if (mult > 0) nicheData[n].cur.multiples.push(mult);
+      });
+    });
+
+    const shifts = Object.entries(nicheData)
+      .filter(([n, d]) => d.prev.count >= 3 && d.cur.count >= 3)
+      .map(([name, d]) => {
+        const supplyChange = d.prev.count > 0 ? ((d.cur.count - d.prev.count) / d.prev.count * 100) : 0;
+        const prevMedMult = d.prev.multiples.length ? median(d.prev.multiples) : 0;
+        const curMedMult = d.cur.multiples.length ? median(d.cur.multiples) : 0;
+        const multChange = prevMedMult > 0 ? ((curMedMult - prevMedMult) / prevMedMult * 100) : 0;
+
+        let verdict, verdictClass;
+        if (supplyChange < -10 && multChange > 5) { verdict = 'Heating Up'; verdictClass = 'niche-shift-heating'; }
+        else if (supplyChange > 10 && multChange < -5) { verdict = 'Cooling Down'; verdictClass = 'niche-shift-cooling'; }
+        else { verdict = 'Stable'; verdictClass = 'niche-shift-stable'; }
+
+        return { name, curCount: d.cur.count, prevCount: d.prev.count, supplyChange, prevMedMult, curMedMult, multChange, verdict, verdictClass };
+      })
+      .sort((a, b) => Math.abs(b.supplyChange) + Math.abs(b.multChange) - Math.abs(a.supplyChange) - Math.abs(a.multChange))
+      .slice(0, 15);
+
+    if (!shifts.length) {
+      if (cardsEl) cardsEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough quarterly data to compare.</p>';
+      return;
+    }
+
+    // Chart: grouped bar showing supply change + multiple change per niche
+    if (canvas) {
+      state.charts.nicheShifts = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: shifts.map(s => s.name),
+          datasets: [
+            {
+              label: 'Supply Change %',
+              data: shifts.map(s => parseFloat(s.supplyChange.toFixed(1))),
+              backgroundColor: shifts.map(s => s.supplyChange > 0 ? 'rgba(218,54,51,0.6)' : 'rgba(46,160,67,0.6)'),
+              borderRadius: 3,
+            },
+            {
+              label: 'Multiple Change %',
+              data: shifts.map(s => parseFloat(s.multChange.toFixed(1))),
+              backgroundColor: shifts.map(s => s.multChange > 0 ? 'rgba(46,160,67,0.6)' : 'rgba(218,54,51,0.6)'),
+              borderRadius: 3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#8b949e' } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + (ctx.raw > 0 ? '+' : '') + ctx.raw + '%'; } } },
+          },
+          scales: {
+            x: { ticks: { color: '#8b949e', font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+            y: { ticks: { color: '#6a737d', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          },
+        },
+      });
+    }
+
+    // Cards
+    if (cardsEl) {
+      cardsEl.innerHTML = shifts.map(s => {
+        function arrow(val) {
+          if (val > 0) return '<span class="niche-shift-up">+' + val.toFixed(1) + '%</span>';
+          if (val < 0) return '<span class="niche-shift-down">' + val.toFixed(1) + '%</span>';
+          return '<span class="niche-shift-flat">0%</span>';
+        }
+        return `
+          <div class="niche-shift-card">
+            <div class="niche-shift-name">${escapeHtml(s.name)}</div>
+            <div class="niche-shift-row"><span>Supply (${prevLabel} vs ${curLabel})</span>${arrow(s.supplyChange)}</div>
+            <div class="niche-shift-row"><span>Median Multiple</span><span>${s.prevMedMult.toFixed(1)}x &rarr; ${s.curMedMult.toFixed(1)}x ${arrow(s.multChange)}</span></div>
+            <div class="niche-shift-row"><span>Listings</span><span>${s.prevCount} &rarr; ${s.curCount}</span></div>
+            <span class="niche-shift-verdict ${s.verdictClass}">${s.verdict}</span>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  // =====================================================================
+  //  PRICE ANCHORING ANALYSIS
+  // =====================================================================
+  function renderPriceAnchoring(forSale, sold) {
+    destroyChart('priceAnchoring');
+    destroyChart('multipleAnchoring');
+    const canvas1 = $('#chart-price-anchoring');
+    const canvas2 = $('#chart-multiple-anchoring');
+    const summaryEl = $('#anchoring-summary');
+
+    // Group by price range
+    const buckets = [
+      { label: 'Under $50K', min: 0, max: 50000 },
+      { label: '$50K-$100K', min: 50000, max: 100000 },
+      { label: '$100K-$250K', min: 100000, max: 250000 },
+      { label: '$250K-$500K', min: 250000, max: 500000 },
+      { label: '$500K-$1M', min: 500000, max: 1000000 },
+      { label: '$1M+', min: 1000000, max: Infinity },
+    ];
+
+    // For each bucket, compare asking (forSale) vs sold multiples and prices
+    const bucketData = buckets.map(b => {
+      const askMults = forSale
+        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
+        .map(l => parseFloat(l.listing_multiple || 0))
+        .filter(m => m > 0);
+      const soldMults = sold
+        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
+        .map(l => parseFloat(l.listing_multiple || 0))
+        .filter(m => m > 0);
+      const askPrices = forSale
+        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
+        .map(l => parseFloat(l.listing_price || 0));
+      const soldPrices = sold
+        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
+        .map(l => parseFloat(l.listing_price || 0));
+
+      const medAskMult = askMults.length ? median(askMults) : 0;
+      const medSoldMult = soldMults.length ? median(soldMults) : 0;
+      const medAskPrice = askPrices.length ? median(askPrices) : 0;
+      const medSoldPrice = soldPrices.length ? median(soldPrices) : 0;
+      const discount = medAskMult > 0 && medSoldMult > 0 ? ((medAskMult - medSoldMult) / medAskMult * 100) : 0;
+      const priceDiscount = medAskPrice > 0 && medSoldPrice > 0 ? ((medAskPrice - medSoldPrice) / medAskPrice * 100) : 0;
+
+      return {
+        label: b.label, medAskMult, medSoldMult, medAskPrice, medSoldPrice,
+        discount, priceDiscount,
+        askCount: askMults.length, soldCount: soldMults.length,
+      };
+    }).filter(b => b.askCount >= 2 && b.soldCount >= 2);
+
+    if (!bucketData.length) {
+      if (summaryEl) summaryEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough data.</p>';
+      return;
+    }
+
+    // Chart 1: Discount % by size
+    if (canvas1) {
+      state.charts.priceAnchoring = new Chart(canvas1, {
+        type: 'bar',
+        data: {
+          labels: bucketData.map(b => b.label),
+          datasets: [{
+            label: 'Avg Discount from Asking %',
+            data: bucketData.map(b => parseFloat(b.discount.toFixed(1))),
+            backgroundColor: bucketData.map(b => b.discount > 10 ? 'rgba(46,160,67,0.7)' : b.discount > 5 ? 'rgba(210,153,34,0.7)' : 'rgba(79,134,247,0.7)'),
+            borderRadius: 4,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { var b = bucketData[ctx.dataIndex]; return ['Discount: ' + ctx.raw + '%', 'Asking: ' + b.medAskMult.toFixed(1) + 'x  Sold: ' + b.medSoldMult.toFixed(1) + 'x', '(' + b.askCount + ' asking, ' + b.soldCount + ' sold)']; } } },
+          },
+          scales: {
+            x: { ticks: { color: '#8b949e' }, grid: { display: false } },
+            y: { ticks: { color: '#6a737d', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(45,49,72,0.5)' }, min: 0 },
+          },
+        },
+      });
+    }
+
+    // Chart 2: Asking vs Sold multiple side by side
+    if (canvas2) {
+      state.charts.multipleAnchoring = new Chart(canvas2, {
+        type: 'bar',
+        data: {
+          labels: bucketData.map(b => b.label),
+          datasets: [
+            { label: 'Asking Multiple', data: bucketData.map(b => parseFloat(b.medAskMult.toFixed(1))), backgroundColor: 'rgba(218,54,51,0.6)', borderRadius: 3 },
+            { label: 'Sold Multiple', data: bucketData.map(b => parseFloat(b.medSoldMult.toFixed(1))), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#8b949e' } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + 'x (' + bucketData[ctx.dataIndex][ctx.datasetIndex === 0 ? 'askCount' : 'soldCount'] + ' listings)'; } } },
+          },
+          scales: {
+            x: { ticks: { color: '#8b949e' }, grid: { display: false } },
+            y: { ticks: { color: '#6a737d', callback: function(v) { return v + 'x'; } }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          },
+        },
+      });
+    }
+
+    // Summary cards
+    if (summaryEl) {
+      const overall = bucketData.reduce((acc, b) => {
+        acc.totalDiscount += b.discount * b.soldCount;
+        acc.totalSold += b.soldCount;
+        return acc;
+      }, { totalDiscount: 0, totalSold: 0 });
+      const avgDiscount = overall.totalSold > 0 ? (overall.totalDiscount / overall.totalSold) : 0;
+      const bestDeal = bucketData.reduce((best, b) => b.discount > best.discount ? b : best, bucketData[0]);
+      const tightest = bucketData.reduce((t, b) => b.discount < t.discount ? b : t, bucketData[0]);
+
+      summaryEl.innerHTML = `
+        <div class="anchoring-card">
+          <div class="anchoring-card-label">Overall Avg Discount</div>
+          <div class="anchoring-card-value">${avgDiscount.toFixed(1)}%</div>
+          <div class="anchoring-card-sub">below asking multiple</div>
+        </div>
+        <div class="anchoring-card">
+          <div class="anchoring-card-label">Most Negotiation Room</div>
+          <div class="anchoring-card-value" style="color:#2ea043">${bestDeal.label}</div>
+          <div class="anchoring-card-sub">${bestDeal.discount.toFixed(1)}% avg discount (${bestDeal.soldCount} sales)</div>
+        </div>
+        <div class="anchoring-card">
+          <div class="anchoring-card-label">Tightest Pricing</div>
+          <div class="anchoring-card-value" style="color:#da3633">${tightest.label}</div>
+          <div class="anchoring-card-sub">${tightest.discount.toFixed(1)}% avg discount (${tightest.soldCount} sales)</div>
+        </div>
+        <div class="anchoring-card">
+          <div class="anchoring-card-label">Your Edge</div>
+          <div class="anchoring-card-value">Open ${bestDeal.discount.toFixed(0)}% below</div>
+          <div class="anchoring-card-sub">for ${bestDeal.label} businesses</div>
+        </div>
+      `;
+    }
+  }
+
+  // =====================================================================
+  //  EXIT TIMING OPTIMIZER
+  // =====================================================================
+  function renderExitTiming(sold) {
+    destroyChart('exitTiming');
+    const canvas = $('#chart-exit-timing');
+    const cardsEl = $('#exit-timing-cards');
+    if (!canvas && !cardsEl) return;
+
+    // Group sold listings by niche and quarter
+    const qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const nicheQ = {};
+
+    sold.forEach(l => {
+      const soldDate = l.sold_date || l.sold_at || l.updated_at;
+      if (!soldDate) return;
+      const d = new Date(soldDate);
+      const q = Math.floor(d.getMonth() / 3);
+      const mult = parseFloat(l.listing_multiple || 0);
+      if (mult <= 0) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheQ[n]) nicheQ[n] = [[], [], [], []]; // Q1-Q4
+        nicheQ[n][q].push(mult);
+      });
+    });
+
+    // Only niches with data in at least 3 quarters and 10+ total sales
+    const nicheTimings = Object.entries(nicheQ)
+      .filter(([n, qs]) => {
+        const nonEmpty = qs.filter(q => q.length > 0).length;
+        const total = qs.reduce((s, q) => s + q.length, 0);
+        return nonEmpty >= 3 && total >= 10;
+      })
+      .map(([name, qs]) => {
+        const qMedians = qs.map(q => q.length ? median(q) : null);
+        const validMedians = qMedians.filter(m => m !== null);
+        const overallMedian = median(validMedians);
+
+        let bestQ = -1, bestMult = 0, worstQ = -1, worstMult = Infinity;
+        qMedians.forEach((m, i) => {
+          if (m !== null && m > bestMult) { bestMult = m; bestQ = i; }
+          if (m !== null && m < worstMult) { worstMult = m; worstQ = i; }
+        });
+
+        const premium = overallMedian > 0 ? ((bestMult - overallMedian) / overallMedian * 100) : 0;
+        return { name, qMedians, bestQ, bestMult, worstQ, worstMult, premium, overallMedian, totalSales: qs.reduce((s, q) => s + q.length, 0) };
+      })
+      .sort((a, b) => b.premium - a.premium)
+      .slice(0, 12);
+
+    if (!nicheTimings.length) {
+      if (cardsEl) cardsEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough quarterly sold data.</p>';
+      return;
+    }
+
+    // Chart: heatmap-style grouped bar
+    if (canvas) {
+      const datasets = [0, 1, 2, 3].map(qi => ({
+        label: qLabels[qi],
+        data: nicheTimings.map(nt => nt.qMedians[qi] !== null ? parseFloat(nt.qMedians[qi].toFixed(1)) : 0),
+        backgroundColor: ['rgba(79,134,247,0.6)', 'rgba(46,160,67,0.6)', 'rgba(210,153,34,0.6)', 'rgba(218,54,51,0.6)'][qi],
+        borderRadius: 3,
+      }));
+
+      state.charts.exitTiming = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: nicheTimings.map(nt => nt.name),
+          datasets: datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#8b949e' } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + 'x multiple'; } } },
+          },
+          scales: {
+            x: { ticks: { color: '#8b949e', font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+            y: { ticks: { color: '#6a737d', callback: function(v) { return v + 'x'; } }, grid: { color: 'rgba(45,49,72,0.5)' }, title: { display: true, text: 'Median Sold Multiple', color: '#6a737d' } },
+          },
+        },
+      });
+    }
+
+    // Cards
+    if (cardsEl) {
+      cardsEl.innerHTML = nicheTimings.map(nt => {
+        return `
+          <div class="exit-timing-card">
+            <div class="exit-timing-name">${escapeHtml(nt.name)}</div>
+            <div class="exit-timing-best">Best: ${qLabels[nt.bestQ]} at ${nt.bestMult.toFixed(1)}x (+${nt.premium.toFixed(1)}% vs avg)</div>
+            <div class="exit-timing-worst">Worst: ${qLabels[nt.worstQ]} at ${nt.worstMult.toFixed(1)}x</div>
+            <div class="exit-timing-quarters">
+              ${nt.qMedians.map((m, i) => `
+                <div class="exit-timing-q ${i === nt.bestQ ? 'exit-timing-q-best' : ''}">
+                  <span class="exit-timing-q-label">${qLabels[i]}</span>
+                  <span class="exit-timing-q-value">${m !== null ? m.toFixed(1) + 'x' : '--'}</span>
+                </div>`).join('')}
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:6px">${nt.totalSales} sales analyzed</div>
+          </div>`;
+      }).join('');
+    }
   }
 
   // =====================================================================

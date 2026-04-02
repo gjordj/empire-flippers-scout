@@ -1673,6 +1673,190 @@ a:hover {
 }
 
 /* --- Toast --- */
+/* Smart Money Tracker */
+.smart-money-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.smart-money-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.smart-money-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.smart-money-hot::before { background: linear-gradient(90deg, #da3633, #f0883e); }
+.smart-money-warm::before { background: linear-gradient(90deg, #f0883e, #d29922); }
+.smart-money-cool::before { background: linear-gradient(90deg, #4f86f7, #388bfd); }
+.smart-money-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.smart-money-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.smart-money-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.smart-money-stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.smart-money-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+.smart-money-badge-hot { background: rgba(218,54,51,0.2); color: #f85149; }
+.smart-money-badge-warm { background: rgba(210,153,34,0.2); color: #d29922; }
+.smart-money-badge-cool { background: rgba(79,134,247,0.2); color: #4f86f7; }
+
+/* Niche Shifts */
+.niche-shifts-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.niche-shift-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.niche-shift-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.niche-shift-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-bottom: 3px;
+}
+.niche-shift-row span:first-child { color: var(--text-secondary); }
+.niche-shift-up { color: #2ea043; }
+.niche-shift-down { color: #da3633; }
+.niche-shift-flat { color: var(--text-secondary); }
+.niche-shift-verdict {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.niche-shift-heating { background: rgba(218,54,51,0.15); color: #f85149; }
+.niche-shift-cooling { background: rgba(79,134,247,0.15); color: #58a6ff; }
+.niche-shift-stable { background: rgba(139,148,158,0.15); color: #8b949e; }
+
+/* Price Anchoring */
+.anchoring-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.anchoring-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.anchoring-card-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.anchoring-card-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.anchoring-card-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Exit Timing */
+.exit-timing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.exit-timing-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.exit-timing-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.exit-timing-best {
+  font-size: 0.85rem;
+  color: #2ea043;
+  font-weight: 600;
+}
+.exit-timing-worst {
+  font-size: 0.82rem;
+  color: #da3633;
+  margin-top: 2px;
+}
+.exit-timing-quarters {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.exit-timing-q {
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  background: var(--bg-tertiary);
+}
+.exit-timing-q-label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+.exit-timing-q-value {
+  display: block;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+.exit-timing-q-best {
+  background: rgba(46,160,67,0.15);
+  border: 1px solid rgba(46,160,67,0.3);
+}
+
 /* Floating Back to TOC button */
 .back-to-toc {
   position: fixed;
