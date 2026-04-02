@@ -158,10 +158,11 @@
       <!-- ============================================================ -->
       <!--  CATEGORY 1: MARKET OVERVIEW                                 -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-market">
-        <h2 class="category-title">Market Overview</h2>
+      <div class="category-header" id="cat-market" data-collapse="cat-market-body">
+        <h2 class="category-title">Market Overview <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">High-level snapshot of the Empire Flippers marketplace &mdash; pricing, profit distributions, and timing patterns.</p>
       </div>
+      <div class="category-body" id="cat-market-body">
 
       <div class="dashboard-section" id="sec-distributions">
         <h2 class="section-title">Market Distributions</h2>
@@ -224,13 +225,16 @@
         </div>
       </div>
 
+      </div><!-- /cat-market-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY 2: SECTOR & NICHE INTELLIGENCE                     -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-sectors">
-        <h2 class="category-title">Sector &amp; Niche Intelligence</h2>
+      <div class="category-header" id="cat-sectors" data-collapse="cat-sectors-body">
+        <h2 class="category-title">Sector &amp; Niche Intelligence <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Which niches and business models are most profitable, growing fastest, and have the strongest buyer demand?</p>
       </div>
+      <div class="category-body" id="cat-sectors-body">
 
       <div class="dashboard-section" id="sec-niche-leaderboard">
         <h2 class="section-title">Niche Profitability Leaderboard</h2>
@@ -311,13 +315,16 @@
         </div>
       </div>
 
+      </div><!-- /cat-sectors-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY 3: DEAL DISCOVERY                                  -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-deals">
-        <h2 class="category-title">Deal Discovery</h2>
+      <div class="category-header" id="cat-deals" data-collapse="cat-deals-body">
+        <h2 class="category-title">Deal Discovery <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Find the best acquisition opportunities &mdash; scored, ranked, and filtered for maximum ROI potential.</p>
       </div>
+      <div class="category-body" id="cat-deals-body">
 
       <div class="dashboard-section" id="sec-opportunities">
         <h2 class="section-title">Top Opportunities (Deal Score)</h2>
@@ -347,13 +354,16 @@
         <div class="wealth-picks" id="wealth-picks"></div>
       </div>
 
+      </div><!-- /cat-deals-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY: BUILD vs BUY (AI REPLICABILITY)                   -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-build-vs-buy">
-        <h2 class="category-title">Build vs Buy (AI Replicability)</h2>
+      <div class="category-header" id="cat-build-vs-buy" data-collapse="cat-build-vs-buy-body">
+        <h2 class="category-title">Build vs Buy (AI Replicability) <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Can you replicate this business with Claude Code, AI content tools, and no-code platforms instead of buying it? Or does it have genuine moats worth paying for?</p>
       </div>
+      <div class="category-body" id="cat-build-vs-buy-body">
 
       <div class="dashboard-section" id="sec-build-vs-buy">
         <h2 class="section-title">Build vs Buy Verdicts</h2>
@@ -381,13 +391,16 @@
         </div>
       </div>
 
+      </div><!-- /cat-build-vs-buy-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY 4: ACQUISITION PLAYBOOK                            -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-playbook">
-        <h2 class="category-title">Acquisition Playbook</h2>
+      <div class="category-header" id="cat-playbook" data-collapse="cat-playbook-body">
+        <h2 class="category-title">Acquisition Playbook <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Negotiation intel, comparable sales, market timing, and budget planning to execute your acquisition strategy.</p>
       </div>
+      <div class="category-body" id="cat-playbook-body">
 
       <div class="dashboard-section" id="sec-comps">
         <h2 class="section-title">Comparable Sales</h2>
@@ -451,13 +464,16 @@
         <div class="budget-tiers" id="budget-tiers"></div>
       </div>
 
+      </div><!-- /cat-playbook-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY 5: FLIP & RETURNS                                  -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-flip">
-        <h2 class="category-title">Flip &amp; Returns</h2>
+      <div class="category-header" id="cat-flip" data-collapse="cat-flip-body">
+        <h2 class="category-title">Flip &amp; Returns <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Improvement upside, revenue efficiency, and projected return on investment over time.</p>
       </div>
+      <div class="category-body" id="cat-flip-body">
 
       <div class="dashboard-section" id="sec-flip">
         <h2 class="section-title">Flip Opportunity Analyzer</h2>
@@ -507,13 +523,16 @@
         <div class="exit-timing-cards" id="exit-timing-cards"></div>
       </div>
 
+      </div><!-- /cat-flip-body -->
+
       <!-- ============================================================ -->
       <!--  CATEGORY 6: RISK & EFFICIENCY                               -->
       <!-- ============================================================ -->
-      <div class="category-header" id="cat-risk">
-        <h2 class="category-title">Risk &amp; Efficiency</h2>
+      <div class="category-header" id="cat-risk" data-collapse="cat-risk-body">
+        <h2 class="category-title">Risk &amp; Efficiency <span class="category-chevron">&#9660;</span></h2>
         <p class="category-desc">Evaluate acquisition risk and find the most efficient, passive businesses for portfolio building.</p>
       </div>
+      <div class="category-body" id="cat-risk-body">
 
       <div class="dashboard-section" id="sec-risk">
         <h2 class="section-title">Risk Assessment Matrix</h2>
@@ -530,6 +549,8 @@
         <p class="section-subtitle">Profit per hour worked per week. Most cash with least effort &mdash; ideal for portfolio builders.</p>
         <div class="forecast-grid" id="passive-income-grid"></div>
       </div>
+
+      </div><!-- /cat-risk-body -->
 
     </div>
 
