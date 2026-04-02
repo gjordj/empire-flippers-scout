@@ -1716,6 +1716,89 @@ a:hover {
 }
 
 /* ============================================
+   TABLE OF CONTENTS
+   ============================================ */
+
+.toc {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.toc-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.toc-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.toc-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.toc-link:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Confidence badges */
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.conf-high {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.conf-med {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.conf-low {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Offset anchor scroll for sticky header */
+.dashboard-section[id],
+.charts-row[id] {
+  scroll-margin-top: 80px;
+}
+
+/* ============================================
    FORECASTING & DEEP ANALYSIS
    ============================================ */
 
@@ -2391,6 +2474,25 @@ a:hover {
   .trend-stats {
     grid-template-columns: repeat(2, 1fr);
     gap: 6px;
+  }
+
+  /* --- TOC --- */
+  .toc {
+    padding: 10px 12px;
+  }
+
+  .toc-links {
+    gap: 4px;
+  }
+
+  .toc-link {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+  }
+
+  .dashboard-section[id],
+  .charts-row[id] {
+    scroll-margin-top: 70px;
   }
 
   /* --- Last updated --- */

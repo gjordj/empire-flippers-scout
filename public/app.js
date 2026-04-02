@@ -1395,6 +1395,7 @@
     const columns = [
       { key: '_rank', label: '#' },
       { key: '_name', label: 'Niche' },
+      { key: 'totalListings', label: 'n', render: r => `<span class="confidence-badge ${r.totalListings >= 10 ? 'conf-high' : r.totalListings >= 5 ? 'conf-med' : 'conf-low'}" title="${r.totalListings} samples — ${r.totalListings >= 10 ? 'high' : r.totalListings >= 5 ? 'moderate' : 'low'} confidence">${r.totalListings}</span>` },
       { key: 'active', label: 'Active', render: r => r.active },
       { key: 'sold', label: 'Sold', render: r => r.sold },
       { key: 'avgAnnualProfit', label: 'Avg Annual Net Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgAnnualProfit) },
@@ -1450,6 +1451,7 @@
     const columns = [
       { key: '_rank', label: '#' },
       { key: '_name', label: 'Monetization' },
+      { key: 'totalListings', label: 'n', render: r => `<span class="confidence-badge ${r.totalListings >= 10 ? 'conf-high' : r.totalListings >= 5 ? 'conf-med' : 'conf-low'}" title="${r.totalListings} samples — ${r.totalListings >= 10 ? 'high' : r.totalListings >= 5 ? 'moderate' : 'low'} confidence">${r.totalListings}</span>` },
       { key: 'active', label: 'Active', render: r => r.active },
       { key: 'sold', label: 'Sold', render: r => r.sold },
       { key: 'avgAnnualProfit', label: 'Avg Annual Net Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgAnnualProfit) },
