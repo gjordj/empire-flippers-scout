@@ -4258,9 +4258,9 @@
     const canvas1 = $('#chart-price-anchoring');
     const canvas2 = $('#chart-multiple-anchoring');
     const summaryEl = $('#anchoring-summary');
-    console.log('Price Anchoring: canvas1=' + !!canvas1 + ' canvas2=' + !!canvas2 + ' summary=' + !!summaryEl + ' forSale=' + forSale.length + ' sold=' + sold.length);
 
-    // Group by price range
+    // Strategy: compare asking multiples (forSale) vs sold multiples by NICHE
+    // then group results by the for-sale price range to show where negotiation leverage is
     const buckets = [
       { label: 'Under $50K', min: 0, max: 50000 },
       { label: '$50K-$100K', min: 50000, max: 100000 },
@@ -4270,54 +4270,64 @@
       { label: '$1M+', min: 1000000, max: Infinity },
     ];
 
-    // For each bucket, compare asking (forSale) vs sold multiples and prices
-    const bucketData = buckets.map(b => {
-      const askMults = forSale
-        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
-        .map(l => parseFloat(l.listing_multiple || 0))
-        .filter(m => m > 0);
-      const soldMults = sold
-        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
-        .map(l => parseFloat(l.listing_multiple || 0))
-        .filter(m => m > 0);
-      const askPrices = forSale
-        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
-        .map(l => parseFloat(l.listing_price || 0));
-      const soldPrices = sold
-        .filter(l => { const p = parseFloat(l.listing_price || 0); return p >= b.min && p < b.max; })
-        .map(l => parseFloat(l.listing_price || 0));
+    // Build niche-level sold multiples lookup
+    const nicheSoldMults = {};
+    sold.forEach(l => {
+      const mult = parseFloat(l.listing_multiple || 0);
+      if (mult <= 0) return;
+      getNicheNames(l).forEach(n => {
+        if (!nicheSoldMults[n]) nicheSoldMults[n] = [];
+        nicheSoldMults[n].push(mult);
+      });
+    });
 
-      const medAskMult = askMults.length ? median(askMults) : 0;
-      const medSoldMult = soldMults.length ? median(soldMults) : 0;
-      const medAskPrice = askPrices.length ? median(askPrices) : 0;
-      const medSoldPrice = soldPrices.length ? median(soldPrices) : 0;
-      const discount = medAskMult > 0 && medSoldMult > 0 ? ((medAskMult - medSoldMult) / medAskMult * 100) : 0;
-      const priceDiscount = medAskPrice > 0 && medSoldPrice > 0 ? ((medAskPrice - medSoldPrice) / medAskPrice * 100) : 0;
+    // For each for-sale listing, compute how its asking multiple compares to its niche's sold median
+    const discountsByBucket = buckets.map(() => []);
 
-      return {
-        label: b.label, medAskMult, medSoldMult, medAskPrice, medSoldPrice,
-        discount, priceDiscount,
-        askCount: askMults.length, soldCount: soldMults.length,
-      };
-    }).filter(b => b.askCount >= 1 && b.soldCount >= 1);
+    forSale.forEach(l => {
+      const price = parseFloat(l.listing_price || 0);
+      const askMult = parseFloat(l.listing_multiple || 0);
+      if (price <= 0 || askMult <= 0) return;
+      const niches = getNicheNames(l);
+      // Get the niche sold median
+      const nicheMults = niches.flatMap(n => nicheSoldMults[n] || []);
+      if (nicheMults.length < 3) return;
+      const soldMedian = median(nicheMults);
+      if (soldMedian <= 0) return;
+      const gap = ((askMult - soldMedian) / askMult * 100);
+      // Find which price bucket
+      for (var i = 0; i < buckets.length; i++) {
+        if (price >= buckets[i].min && price < buckets[i].max) {
+          discountsByBucket[i].push({ gap: gap, askMult: askMult, soldMedian: soldMedian });
+          break;
+        }
+      }
+    });
 
-    console.log('Price Anchoring buckets:', bucketData.map(b => b.label + ': ask=' + b.askCount + ' sold=' + b.soldCount + ' askMult=' + b.medAskMult.toFixed(1) + ' soldMult=' + b.medSoldMult.toFixed(1) + ' disc=' + b.discount.toFixed(1) + '%'));
+    const bucketData = buckets.map((b, i) => {
+      const items = discountsByBucket[i];
+      if (!items.length) return null;
+      const avgGap = items.reduce((s, d) => s + d.gap, 0) / items.length;
+      const medAsk = median(items.map(d => d.askMult));
+      const medSold = median(items.map(d => d.soldMedian));
+      return { label: b.label, avgGap: avgGap, medAsk: medAsk, medSold: medSold, count: items.length };
+    }).filter(Boolean);
 
     if (!bucketData.length) {
-      if (summaryEl) summaryEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough data to compare asking vs sold prices.</p>';
+      if (summaryEl) summaryEl.innerHTML = '<p style="color:var(--text-secondary)">Not enough niche data to compare asking vs sold.</p>';
       return;
     }
 
-    // Chart 1: Discount % by size
+    // Chart 1: Gap from niche sold median by price range
     if (canvas1) {
       state.charts.priceAnchoring = new Chart(canvas1, {
         type: 'bar',
         data: {
-          labels: bucketData.map(b => b.label),
+          labels: bucketData.map(b => b.label + ' (' + b.count + ')'),
           datasets: [{
-            label: 'Avg Discount from Asking %',
-            data: bucketData.map(b => parseFloat(b.discount.toFixed(1))),
-            backgroundColor: bucketData.map(b => b.discount > 10 ? 'rgba(46,160,67,0.7)' : b.discount > 5 ? 'rgba(210,153,34,0.7)' : 'rgba(79,134,247,0.7)'),
+            label: 'Asking vs Sold Gap %',
+            data: bucketData.map(b => parseFloat(b.avgGap.toFixed(1))),
+            backgroundColor: bucketData.map(b => b.avgGap > 10 ? 'rgba(46,160,67,0.7)' : b.avgGap > 5 ? 'rgba(210,153,34,0.7)' : 'rgba(79,134,247,0.7)'),
             borderRadius: 4,
           }],
         },
@@ -4326,11 +4336,11 @@
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: function(ctx) { var b = bucketData[ctx.dataIndex]; return ['Discount: ' + ctx.raw + '%', 'Asking: ' + b.medAskMult.toFixed(1) + 'x  Sold: ' + b.medSoldMult.toFixed(1) + 'x', '(' + b.askCount + ' asking, ' + b.soldCount + ' sold)']; } } },
+            tooltip: { callbacks: { label: function(ctx) { var b = bucketData[ctx.dataIndex]; return ['Gap: ' + ctx.raw + '% above sold median', 'Asking: ' + b.medAsk.toFixed(1) + 'x  Niche Sold: ' + b.medSold.toFixed(1) + 'x', b.count + ' listings']; } } },
           },
           scales: {
             x: { ticks: { color: '#8b949e' }, grid: { display: false } },
-            y: { ticks: { color: '#6a737d', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(45,49,72,0.5)' }, min: 0 },
+            y: { ticks: { color: '#6a737d', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(45,49,72,0.5)' } },
           },
         },
       });
@@ -4343,8 +4353,8 @@
         data: {
           labels: bucketData.map(b => b.label),
           datasets: [
-            { label: 'Asking Multiple', data: bucketData.map(b => parseFloat(b.medAskMult.toFixed(1))), backgroundColor: 'rgba(218,54,51,0.6)', borderRadius: 3 },
-            { label: 'Sold Multiple', data: bucketData.map(b => parseFloat(b.medSoldMult.toFixed(1))), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 },
+            { label: 'Median Asking Multiple', data: bucketData.map(b => parseFloat(b.medAsk.toFixed(1))), backgroundColor: 'rgba(218,54,51,0.6)', borderRadius: 3 },
+            { label: 'Niche Sold Median', data: bucketData.map(b => parseFloat(b.medSold.toFixed(1))), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 },
           ],
         },
         options: {
@@ -4352,7 +4362,7 @@
           maintainAspectRatio: false,
           plugins: {
             legend: { labels: { color: '#8b949e' } },
-            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + 'x (' + bucketData[ctx.dataIndex][ctx.datasetIndex === 0 ? 'askCount' : 'soldCount'] + ' listings)'; } } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + 'x (' + bucketData[ctx.dataIndex].count + ' listings)'; } } },
           },
           scales: {
             x: { ticks: { color: '#8b949e' }, grid: { display: false } },
@@ -4364,34 +4374,30 @@
 
     // Summary cards
     if (summaryEl) {
-      const overall = bucketData.reduce((acc, b) => {
-        acc.totalDiscount += b.discount * b.soldCount;
-        acc.totalSold += b.soldCount;
-        return acc;
-      }, { totalDiscount: 0, totalSold: 0 });
-      const avgDiscount = overall.totalSold > 0 ? (overall.totalDiscount / overall.totalSold) : 0;
-      const bestDeal = bucketData.reduce((best, b) => b.discount > best.discount ? b : best, bucketData[0]);
-      const tightest = bucketData.reduce((t, b) => b.discount < t.discount ? b : t, bucketData[0]);
+      const totalCount = bucketData.reduce((s, b) => s + b.count, 0);
+      const weightedGap = bucketData.reduce((s, b) => s + b.avgGap * b.count, 0) / (totalCount || 1);
+      const bestDeal = bucketData.reduce((best, b) => b.avgGap > best.avgGap ? b : best, bucketData[0]);
+      const tightest = bucketData.reduce((t, b) => b.avgGap < t.avgGap ? b : t, bucketData[0]);
 
       summaryEl.innerHTML = `
         <div class="anchoring-card">
-          <div class="anchoring-card-label">Overall Avg Discount</div>
-          <div class="anchoring-card-value">${avgDiscount.toFixed(1)}%</div>
-          <div class="anchoring-card-sub">below asking multiple</div>
+          <div class="anchoring-card-label">Avg Asking Premium</div>
+          <div class="anchoring-card-value">${weightedGap.toFixed(1)}%</div>
+          <div class="anchoring-card-sub">above what niche peers sold for</div>
         </div>
         <div class="anchoring-card">
-          <div class="anchoring-card-label">Most Negotiation Room</div>
+          <div class="anchoring-card-label">Most Overpriced Segment</div>
           <div class="anchoring-card-value" style="color:#2ea043">${bestDeal.label}</div>
-          <div class="anchoring-card-sub">${bestDeal.discount.toFixed(1)}% avg discount (${bestDeal.soldCount} sales)</div>
+          <div class="anchoring-card-sub">${bestDeal.avgGap.toFixed(1)}% above sold (${bestDeal.count} listings) — most room to negotiate</div>
         </div>
         <div class="anchoring-card">
-          <div class="anchoring-card-label">Tightest Pricing</div>
+          <div class="anchoring-card-label">Fairest Priced Segment</div>
           <div class="anchoring-card-value" style="color:#da3633">${tightest.label}</div>
-          <div class="anchoring-card-sub">${tightest.discount.toFixed(1)}% avg discount (${tightest.soldCount} sales)</div>
+          <div class="anchoring-card-sub">${tightest.avgGap.toFixed(1)}% above sold (${tightest.count} listings) — least room</div>
         </div>
         <div class="anchoring-card">
-          <div class="anchoring-card-label">Your Edge</div>
-          <div class="anchoring-card-value">Open ${bestDeal.discount.toFixed(0)}% below</div>
+          <div class="anchoring-card-label">Negotiation Tip</div>
+          <div class="anchoring-card-value">Offer ${Math.max(1, Math.round(bestDeal.avgGap))}% below</div>
           <div class="anchoring-card-sub">for ${bestDeal.label} businesses</div>
         </div>
       `;
