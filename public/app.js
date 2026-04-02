@@ -5480,21 +5480,9 @@
       const bodyId = header.getAttribute('data-collapse');
       const body = $('#' + bodyId);
       if (!body) return;
-      // Set initial max-height so transition works
-      body.style.maxHeight = body.scrollHeight + 'px';
       header.addEventListener('click', () => {
-        const isCollapsed = header.classList.toggle('collapsed');
-        if (isCollapsed) {
-          body.style.maxHeight = body.scrollHeight + 'px';
-          body.offsetHeight; // force reflow
-          body.classList.add('collapsed');
-          body.style.maxHeight = '0';
-        } else {
-          body.classList.remove('collapsed');
-          body.style.maxHeight = body.scrollHeight + 'px';
-          // After transition, remove max-height so new content isn't clipped
-          setTimeout(() => { if (!header.classList.contains('collapsed')) body.style.maxHeight = 'none'; }, 450);
-        }
+        header.classList.toggle('collapsed');
+        body.classList.toggle('collapsed');
       });
     });
 
