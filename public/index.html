@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empire Flippers Scout</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>Empire Flippers Scout</h1>
+        <p class="subtitle">Business Acquisition Intelligence Platform</p>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-tab" data-tab="listings">Listings</button>
+        <button class="nav-tab" data-tab="favorites">Favorites <span class="fav-count" id="fav-count-badge">0</span></button>
+        <button class="nav-tab" data-tab="compare">Compare <span class="compare-count" id="compare-count-badge">0</span></button>
+      </nav>
+      <div class="header-actions">
+        <button id="btn-load-dashboard" class="btn btn-accent" title="Fetch all data and analyze">
+          <span class="btn-icon">&#9889;</span> Load Full Analysis
+        </button>
+        <button id="btn-export-csv" class="btn btn-secondary" title="Export current listings to CSV">
+          <span class="btn-icon">&#8681;</span> Export CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== DASHBOARD TAB ==================== -->
+  <section class="tab-content active" id="tab-dashboard">
+    <div class="dashboard-prompt" id="dashboard-prompt">
+      <div class="prompt-icon">&#128202;</div>
+      <h2>Load Full Analysis to Discover Opportunities</h2>
+      <p>Click "Load Full Analysis" to fetch all active and sold listings from Empire Flippers. The system will analyze trends, score deals, and identify the best acquisition opportunities.</p>
+      <button class="btn btn-accent btn-lg" id="btn-load-dashboard-2">
+        <span class="btn-icon">&#9889;</span> Load Full Analysis
+      </button>
+    </div>
+
+    <div class="dashboard hidden" id="dashboard">
+      <!-- Stats Row -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <span class="stat-label">Active Listings</span>
+          <span class="stat-value" id="dash-active-count">--</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Sold Listings</span>
+          <span class="stat-value" id="dash-sold-count">--</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Avg Asking Multiple</span>
+          <span class="stat-value" id="dash-avg-multiple">--</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Avg Sold Multiple</span>
+          <span class="stat-value" id="dash-avg-sold-multiple">--</span>
+        </div>
+        <div class="stat-card stat-card-accent">
+          <span class="stat-label">Best Opportunity Score</span>
+          <span class="stat-value" id="dash-best-score">--</span>
+        </div>
+      </div>
+
+      <!-- Top Opportunities -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#127942; Top 20 Opportunities (Deal Score)</h2>
+        <p class="section-subtitle">Scored by ROI potential, profit margin, business maturity, work efficiency, niche momentum, and price discount vs. market average.</p>
+        <div class="opportunities-grid" id="opportunities-grid"></div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Niche Distribution (Active vs Sold)</h3>
+          <canvas id="chart-niche-dist"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Price Distribution</h3>
+          <canvas id="chart-price-dist"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Monthly Profit Distribution</h3>
+          <canvas id="chart-profit-dist"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Multiple Distribution (Active vs Sold)</h3>
+          <canvas id="chart-multiple-dist"></canvas>
+        </div>
+      </div>
+
+      <!-- Trend Analysis -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128200; Niche Momentum & Trends</h2>
+        <p class="section-subtitle">Which niches are selling the most? Where is the demand? Which have the best ROI?</p>
+        <div class="trends-grid" id="trends-grid"></div>
+      </div>
+
+      <!-- Monetization Insights -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128176; Monetization Insights</h2>
+        <p class="section-subtitle">Average multiples and profit by monetization type. Lower sold multiples = better value for buyers.</p>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Avg Multiple by Monetization</h3>
+            <canvas id="chart-monetization-multiple"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Avg Monthly Profit by Monetization</h3>
+            <canvas id="chart-monetization-profit"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wealth Builder Picks -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128142; Wealth Builder Picks</h2>
+        <p class="section-subtitle">Listings with the best combination of cash flow, growth potential, low effort, and favorable pricing relative to market.</p>
+        <div class="wealth-picks" id="wealth-picks"></div>
+      </div>
+    </div>
+
+    <div class="loading-fullpage hidden" id="dashboard-loading">
+      <div class="spinner-lg"></div>
+      <p class="loading-text" id="dashboard-loading-text">Fetching all listings from Empire Flippers...</p>
+      <p class="loading-sub">This may take a minute on first load. Data is cached for 30 minutes.</p>
+    </div>
+  </section>
+
+  <!-- ==================== LISTINGS TAB ==================== -->
+  <section class="tab-content" id="tab-listings">
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card">
+        <span class="stat-label">Total Listings</span>
+        <span class="stat-value" id="stat-total">--</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Avg Price</span>
+        <span class="stat-value" id="stat-avg-price">--</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Avg Monthly Profit</span>
+        <span class="stat-value" id="stat-avg-profit">--</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Avg Multiple</span>
+        <span class="stat-value" id="stat-avg-multiple">--</span>
+      </div>
+    </div>
+
+    <div class="main-layout">
+      <aside class="filter-panel" id="filter-panel">
+        <div class="filter-header">
+          <h3>Filters</h3>
+          <button class="btn-toggle-filters" id="btn-toggle-filters" title="Toggle filters">&#9660;</button>
+        </div>
+        <div class="filter-body" id="filter-body">
+          <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" data-status="all">All</button>
+              <button class="toggle-btn active" data-status="for_sale">For Sale</button>
+              <button class="toggle-btn" data-status="sold">Sold</button>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Price Range</label>
+            <div class="range-inputs">
+              <input type="number" id="filter-price-min" placeholder="Min" class="input-sm">
+              <span class="range-sep">&ndash;</span>
+              <input type="number" id="filter-price-max" placeholder="Max" class="input-sm">
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Monthly Profit Range</label>
+            <div class="range-inputs">
+              <input type="number" id="filter-profit-min" placeholder="Min" class="input-sm">
+              <span class="range-sep">&ndash;</span>
+              <input type="number" id="filter-profit-max" placeholder="Max" class="input-sm">
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Niche</label>
+            <div class="multi-select-wrapper" id="niche-select-wrapper">
+              <div class="multi-select-trigger" id="niche-trigger">
+                <span class="multi-select-text">All Niches</span>
+                <span class="multi-select-arrow">&#9660;</span>
+              </div>
+              <div class="multi-select-dropdown hidden" id="niche-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Monetization</label>
+            <div class="multi-select-wrapper" id="monetization-select-wrapper">
+              <div class="multi-select-trigger" id="monetization-trigger">
+                <span class="multi-select-text">All Types</span>
+                <span class="multi-select-arrow">&#9660;</span>
+              </div>
+              <div class="multi-select-dropdown hidden" id="monetization-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Sort By</label>
+            <select id="filter-sort-by" class="input-select">
+              <option value="listing_number">Listing Number</option>
+              <option value="price">Price</option>
+              <option value="monthly_net_profit">Monthly Profit</option>
+              <option value="listing_multiple">Multiple</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Sort Order</label>
+            <select id="filter-sort-order" class="input-select">
+              <option value="DESC">Descending</option>
+              <option value="ASC">Ascending</option>
+            </select>
+          </div>
+
+          <div class="filter-group filter-checkboxes">
+            <label class="checkbox-label">
+              <input type="checkbox" id="filter-sba">
+              <span>SBA Financing</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="filter-trademark">
+              <span>Has Trademark</span>
+            </label>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btn-apply-filters" class="btn btn-accent btn-full">Apply Filters</button>
+            <button id="btn-reset-filters" class="btn btn-ghost btn-full">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content-area">
+        <div class="table-container" id="table-container">
+          <div class="loading-overlay hidden" id="loading-overlay">
+            <div class="spinner"></div>
+            <p class="loading-text" id="loading-text">Loading listings...</p>
+          </div>
+          <div class="table-scroll">
+            <table class="listings-table" id="listings-table">
+              <thead>
+                <tr>
+                  <th class="th-check"><input type="checkbox" id="select-all-compare" title="Select all for comparison"></th>
+                  <th class="th-fav"></th>
+                  <th class="th-sortable" data-sort="listing_number">#</th>
+                  <th>Niche</th>
+                  <th>Monetization</th>
+                  <th class="th-sortable" data-sort="listing_price">Price</th>
+                  <th class="th-sortable" data-sort="average_monthly_gross_revenue">Mo. Revenue</th>
+                  <th class="th-sortable" data-sort="average_monthly_net_profit">Mo. Profit</th>
+                  <th class="th-sortable" data-sort="listing_multiple">Multiple</th>
+                  <th>Margin</th>
+                  <th>Age</th>
+                  <th>Hrs/Wk</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                  <th>Listed</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="listings-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="empty-state">
+            <p>No listings found matching your filters.</p>
+          </div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ==================== FAVORITES TAB ==================== -->
+  <section class="tab-content" id="tab-favorites">
+    <div class="favorites-header">
+      <h2>Saved Favorites</h2>
+      <p class="section-subtitle">Your bookmarked listings, saved locally in your browser.</p>
+      <div class="favorites-actions">
+        <button class="btn btn-secondary" id="btn-export-favorites">Export Favorites CSV</button>
+        <button class="btn btn-ghost" id="btn-clear-favorites">Clear All Favorites</button>
+      </div>
+    </div>
+    <div class="favorites-grid" id="favorites-grid">
+      <div class="empty-state" id="favorites-empty">
+        <p>No favorites yet. Click the star icon on any listing to save it here.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== COMPARE TAB ==================== -->
+  <section class="tab-content" id="tab-compare">
+    <div class="compare-header">
+      <h2>Side-by-Side Comparison</h2>
+      <p class="section-subtitle">Select listings from the Listings tab to compare them here.</p>
+      <button class="btn btn-ghost" id="btn-clear-compare">Clear Selection</button>
+    </div>
+    <div class="compare-container" id="compare-container">
+      <div class="empty-state" id="compare-empty">
+        <p>No listings selected for comparison. Use the checkboxes in the Listings tab to select up to 5 listings.</p>
+      </div>
+    </div>
+    <div class="compare-chart-container hidden" id="compare-chart-container">
+      <div class="chart-card">
+        <h3>Comparison Radar</h3>
+        <canvas id="chart-compare-radar"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop hidden" id="modal-backdrop">
+    <div class="modal" id="detail-modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Listing Details</h2>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
