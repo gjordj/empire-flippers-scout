@@ -76,6 +76,40 @@
         </div>
       </div>
 
+      <!-- Niche Profitability Leaderboard -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#127919; Sector & Niche Profitability Leaderboard</h2>
+        <p class="section-subtitle">Every niche ranked by expected annual net profit. Shows avg financials based on all active + sold listings. Click column headers to sort.</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="niche-leaderboard"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Niche financials charts -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Top 15 Niches by Avg Annual Net Profit</h3>
+          <canvas id="chart-niche-profit-rank"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Top 15 Niches by Annual ROI %</h3>
+          <canvas id="chart-niche-roi-rank"></canvas>
+        </div>
+      </div>
+
+      <!-- Monetization Profitability Table -->
+      <div class="dashboard-section">
+        <h2 class="section-title">&#128176; Monetization Type Profitability</h2>
+        <p class="section-subtitle">Breakdown by business model. Which monetization types generate the most cash flow and best returns?</p>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="listings-table leaderboard-table" id="monetization-leaderboard"></table>
+          </div>
+        </div>
+      </div>
+
       <!-- Top Opportunities -->
       <div class="dashboard-section">
         <h2 class="section-title">&#127942; Top 20 Opportunities (Deal Score)</h2>
@@ -123,7 +157,7 @@
             <canvas id="chart-monetization-multiple"></canvas>
           </div>
           <div class="chart-card">
-            <h3>Avg Monthly Profit by Monetization</h3>
+            <h3>Avg Annual Net Profit by Monetization</h3>
             <canvas id="chart-monetization-profit"></canvas>
           </div>
         </div>

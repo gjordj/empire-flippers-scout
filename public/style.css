@@ -377,6 +377,82 @@ a:hover {
   line-height: 1.6;
 }
 
+/* --- Leaderboard Tables --- */
+.leaderboard-table {
+  font-size: 0.82rem;
+}
+
+.leaderboard-table th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+}
+
+.leaderboard-table th:hover {
+  color: var(--accent);
+}
+
+.leaderboard-table th.sorted-asc::after {
+  content: ' \25B4';
+  color: var(--accent);
+}
+
+.leaderboard-table th.sorted-desc::after {
+  content: ' \25BE';
+  color: var(--accent);
+}
+
+.leaderboard-table td {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.leaderboard-table td.name-cell {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.leaderboard-table td.profit-cell {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.leaderboard-table td.roi-cell {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.leaderboard-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-right: 6px;
+  font-family: var(--font-mono);
+}
+
+.rank-gold { background: var(--gold-dim); color: var(--gold); }
+.rank-silver { background: rgba(192,192,192,0.15); color: #c0c0c0; }
+.rank-bronze { background: rgba(205,127,50,0.15); color: #cd7f32; }
+.rank-default { background: var(--bg-tertiary); color: var(--text-muted); }
+
+.market-value-bar {
+  display: inline-block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0.6;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
 /* --- Charts --- */
 .charts-row {
   display: grid;

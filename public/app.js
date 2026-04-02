@@ -320,18 +320,23 @@
   function computeMarketData(forSale, sold) {
     const md = {
       nicheSoldCount: {},
+      nicheActiveCount: {},
       nicheAvgMultiple: {},
       nicheAvgProfit: {},
+      nicheAvgRevenue: {},
+      nicheAvgPrice: {},
       nicheTotalListings: {},
       monetizationAvgMultiple: {},
       monetizationAvgProfit: {},
+      monetizationAvgRevenue: {},
+      monetizationAvgPrice: {},
+      monetizationSoldCount: {},
+      monetizationActiveCount: {},
+      monetizationTotalListings: {},
+      // Full accumulator data for leaderboard
+      nicheAcc: {},
+      monAcc: {},
     };
-
-    // Aggregate sold data for momentum
-    const nicheMultipleAcc = {};
-    const nicheProfitAcc = {};
-    const monMultipleAcc = {};
-    const monProfitAcc = {};
 
     const allListings = [...forSale, ...sold];
 
@@ -340,41 +345,49 @@
       const mons = getMonetizationNames(l);
       const multiple = parseFloat(l.listing_multiple || 0);
       const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const revenue = parseFloat(l.average_monthly_gross_revenue || 0);
+      const price = parseFloat(l.listing_price || 0);
       const isSold = (l.listing_status || '').toLowerCase().includes('sold');
 
       niches.forEach(n => {
         md.nicheTotalListings[n] = (md.nicheTotalListings[n] || 0) + 1;
         if (isSold) md.nicheSoldCount[n] = (md.nicheSoldCount[n] || 0) + 1;
-        if (multiple > 0) {
-          if (!nicheMultipleAcc[n]) nicheMultipleAcc[n] = { sum: 0, count: 0 };
-          nicheMultipleAcc[n].sum += multiple;
-          nicheMultipleAcc[n].count++;
-        }
-        if (profit > 0) {
-          if (!nicheProfitAcc[n]) nicheProfitAcc[n] = { sum: 0, count: 0 };
-          nicheProfitAcc[n].sum += profit;
-          nicheProfitAcc[n].count++;
-        }
+        else md.nicheActiveCount[n] = (md.nicheActiveCount[n] || 0) + 1;
+
+        if (!md.nicheAcc[n]) md.nicheAcc[n] = { profit: [], revenue: [], multiple: [], price: [] };
+        if (profit > 0) md.nicheAcc[n].profit.push(profit);
+        if (revenue > 0) md.nicheAcc[n].revenue.push(revenue);
+        if (multiple > 0) md.nicheAcc[n].multiple.push(multiple);
+        if (price > 0) md.nicheAcc[n].price.push(price);
       });
 
       mons.forEach(m => {
-        if (multiple > 0) {
-          if (!monMultipleAcc[m]) monMultipleAcc[m] = { sum: 0, count: 0 };
-          monMultipleAcc[m].sum += multiple;
-          monMultipleAcc[m].count++;
-        }
-        if (profit > 0) {
-          if (!monProfitAcc[m]) monProfitAcc[m] = { sum: 0, count: 0 };
-          monProfitAcc[m].sum += profit;
-          monProfitAcc[m].count++;
-        }
+        md.monetizationTotalListings[m] = (md.monetizationTotalListings[m] || 0) + 1;
+        if (isSold) md.monetizationSoldCount[m] = (md.monetizationSoldCount[m] || 0) + 1;
+        else md.monetizationActiveCount[m] = (md.monetizationActiveCount[m] || 0) + 1;
+
+        if (!md.monAcc[m]) md.monAcc[m] = { profit: [], revenue: [], multiple: [], price: [] };
+        if (profit > 0) md.monAcc[m].profit.push(profit);
+        if (revenue > 0) md.monAcc[m].revenue.push(revenue);
+        if (multiple > 0) md.monAcc[m].multiple.push(multiple);
+        if (price > 0) md.monAcc[m].price.push(price);
       });
     });
 
-    for (const [k, v] of Object.entries(nicheMultipleAcc)) md.nicheAvgMultiple[k] = v.sum / v.count;
-    for (const [k, v] of Object.entries(nicheProfitAcc)) md.nicheAvgProfit[k] = v.sum / v.count;
-    for (const [k, v] of Object.entries(monMultipleAcc)) md.monetizationAvgMultiple[k] = v.sum / v.count;
-    for (const [k, v] of Object.entries(monProfitAcc)) md.monetizationAvgProfit[k] = v.sum / v.count;
+    function arrAvg(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+
+    for (const [k, v] of Object.entries(md.nicheAcc)) {
+      md.nicheAvgMultiple[k] = arrAvg(v.multiple);
+      md.nicheAvgProfit[k] = arrAvg(v.profit);
+      md.nicheAvgRevenue[k] = arrAvg(v.revenue);
+      md.nicheAvgPrice[k] = arrAvg(v.price);
+    }
+    for (const [k, v] of Object.entries(md.monAcc)) {
+      md.monetizationAvgMultiple[k] = arrAvg(v.multiple);
+      md.monetizationAvgProfit[k] = arrAvg(v.profit);
+      md.monetizationAvgRevenue[k] = arrAvg(v.revenue);
+      md.monetizationAvgPrice[k] = arrAvg(v.price);
+    }
 
     return md;
   }
@@ -1129,6 +1142,12 @@
 
     dom.dashBestScore.textContent = scored[0] ? scored[0].score + '/100' : '--';
 
+    // Leaderboards (before opportunities so they appear first)
+    renderNicheLeaderboard(md);
+    renderNicheProfitChart(md);
+    renderNicheROIChart(md);
+    renderMonetizationLeaderboard(md);
+
     // Top 20 Opportunities
     renderOpportunities(scored.slice(0, 20));
 
@@ -1151,6 +1170,227 @@
     const vals = arr.map(fn).filter(v => v > 0);
     if (!vals.length) return 0;
     return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  // =====================================================================
+  //  NICHE & MONETIZATION LEADERBOARDS
+  // =====================================================================
+
+  function rankBadge(i) {
+    if (i === 0) return `<span class="leaderboard-rank rank-gold">1</span>`;
+    if (i === 1) return `<span class="leaderboard-rank rank-silver">2</span>`;
+    if (i === 2) return `<span class="leaderboard-rank rank-bronze">3</span>`;
+    return `<span class="leaderboard-rank rank-default">${i + 1}</span>`;
+  }
+
+  function buildSortableLeaderboard(tableEl, columns, rows, defaultSortCol, defaultSortDir) {
+    let sortCol = defaultSortCol;
+    let sortDir = defaultSortDir || 'desc';
+
+    function render() {
+      const sorted = [...rows].sort((a, b) => {
+        const va = a[sortCol], vb = b[sortCol];
+        return sortDir === 'desc' ? vb - va : va - vb;
+      });
+
+      const maxMarketVal = Math.max(...sorted.map(r => r._marketValue || 0), 1);
+
+      tableEl.innerHTML = `
+        <thead><tr>${columns.map(c =>
+          `<th class="${sortCol === c.key ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}" data-col="${c.key}">${c.label}</th>`
+        ).join('')}</tr></thead>
+        <tbody>${sorted.map((row, i) => `<tr>${columns.map(c => {
+          if (c.key === '_rank') return `<td>${rankBadge(i)}</td>`;
+          if (c.key === '_name') return `<td class="name-cell">${escapeHtml(row._name)}</td>`;
+          if (c.render) return `<td class="${c.tdClass || ''}">${c.render(row, i, maxMarketVal)}</td>`;
+          return `<td>${row[c.key] != null ? row[c.key] : '--'}</td>`;
+        }).join('')}</tr>`).join('')}</tbody>
+      `;
+
+      // Bind sort
+      tableEl.querySelectorAll('thead th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          if (col === '_rank' || col === '_name') return;
+          if (sortCol === col) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+          else { sortCol = col; sortDir = 'desc'; }
+          render();
+        });
+      });
+    }
+
+    render();
+  }
+
+  function renderNicheLeaderboard(md) {
+    const table = $('#niche-leaderboard');
+    if (!table) return;
+
+    const niches = Object.keys(md.nicheAcc);
+    const rows = niches.map(n => {
+      const acc = md.nicheAcc[n];
+      const avgProfit = acc.profit.length ? acc.profit.reduce((a, b) => a + b, 0) / acc.profit.length : 0;
+      const avgRevenue = acc.revenue.length ? acc.revenue.reduce((a, b) => a + b, 0) / acc.revenue.length : 0;
+      const avgMultiple = acc.multiple.length ? acc.multiple.reduce((a, b) => a + b, 0) / acc.multiple.length : 0;
+      const avgPrice = acc.price.length ? acc.price.reduce((a, b) => a + b, 0) / acc.price.length : 0;
+      const margin = avgRevenue > 0 ? (avgProfit / avgRevenue) * 100 : 0;
+      const annualROI = avgMultiple > 0 ? (12 / avgMultiple) * 100 : 0;
+      const active = md.nicheActiveCount[n] || 0;
+      const soldN = md.nicheSoldCount[n] || 0;
+      const totalListings = active + soldN;
+      const marketValue = avgPrice * active;
+
+      return {
+        _name: n, _rank: 0,
+        active, sold: soldN, totalListings,
+        avgMonthlyProfit: avgProfit,
+        avgAnnualProfit: avgProfit * 12,
+        avgMonthlyRevenue: avgRevenue,
+        avgAnnualRevenue: avgRevenue * 12,
+        avgMargin: margin,
+        avgMultiple,
+        avgPrice,
+        annualROI,
+        _marketValue: marketValue,
+      };
+    }).filter(r => r.totalListings >= 2);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Niche' },
+      { key: 'active', label: 'Active', render: r => r.active },
+      { key: 'sold', label: 'Sold', render: r => r.sold },
+      { key: 'avgAnnualProfit', label: 'Avg Annual Net Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgAnnualProfit) },
+      { key: 'avgMonthlyProfit', label: 'Avg Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgMonthlyProfit) },
+      { key: 'avgAnnualRevenue', label: 'Avg Annual Revenue', render: r => formatUSD(r.avgAnnualRevenue) },
+      { key: 'avgMargin', label: 'Avg Margin', render: r => formatPercent(r.avgMargin) },
+      { key: 'avgMultiple', label: 'Avg Multiple', render: r => formatMultiple(r.avgMultiple) },
+      { key: 'annualROI', label: 'Avg Annual ROI', tdClass: 'roi-cell', render: r => formatPercent(r.annualROI) },
+      { key: 'avgPrice', label: 'Avg Asking Price', render: r => formatUSD(r.avgPrice) },
+      { key: '_marketValue', label: 'Active Market Value', render: (r, i, max) => {
+        const barW = max > 0 ? Math.round((r._marketValue / max) * 80) : 0;
+        return `${formatUSD(r._marketValue)}<span class="market-value-bar" style="width:${barW}px"></span>`;
+      }},
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc');
+  }
+
+  function renderMonetizationLeaderboard(md) {
+    const table = $('#monetization-leaderboard');
+    if (!table) return;
+
+    const mons = Object.keys(md.monAcc);
+    const rows = mons.map(m => {
+      const acc = md.monAcc[m];
+      const avgProfit = acc.profit.length ? acc.profit.reduce((a, b) => a + b, 0) / acc.profit.length : 0;
+      const avgRevenue = acc.revenue.length ? acc.revenue.reduce((a, b) => a + b, 0) / acc.revenue.length : 0;
+      const avgMultiple = acc.multiple.length ? acc.multiple.reduce((a, b) => a + b, 0) / acc.multiple.length : 0;
+      const avgPrice = acc.price.length ? acc.price.reduce((a, b) => a + b, 0) / acc.price.length : 0;
+      const margin = avgRevenue > 0 ? (avgProfit / avgRevenue) * 100 : 0;
+      const annualROI = avgMultiple > 0 ? (12 / avgMultiple) * 100 : 0;
+      const active = md.monetizationActiveCount[m] || 0;
+      const soldN = md.monetizationSoldCount[m] || 0;
+
+      return {
+        _name: m, _rank: 0,
+        active, sold: soldN, totalListings: active + soldN,
+        avgMonthlyProfit: avgProfit,
+        avgAnnualProfit: avgProfit * 12,
+        avgMonthlyRevenue: avgRevenue,
+        avgAnnualRevenue: avgRevenue * 12,
+        avgMargin: margin,
+        avgMultiple,
+        avgPrice,
+        annualROI,
+        _marketValue: avgPrice * active,
+      };
+    }).filter(r => r.totalListings >= 2);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Monetization' },
+      { key: 'active', label: 'Active', render: r => r.active },
+      { key: 'sold', label: 'Sold', render: r => r.sold },
+      { key: 'avgAnnualProfit', label: 'Avg Annual Net Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgAnnualProfit) },
+      { key: 'avgMonthlyProfit', label: 'Avg Mo. Profit', tdClass: 'profit-cell', render: r => formatUSD(r.avgMonthlyProfit) },
+      { key: 'avgAnnualRevenue', label: 'Avg Annual Revenue', render: r => formatUSD(r.avgAnnualRevenue) },
+      { key: 'avgMargin', label: 'Avg Margin', render: r => formatPercent(r.avgMargin) },
+      { key: 'avgMultiple', label: 'Avg Multiple', render: r => formatMultiple(r.avgMultiple) },
+      { key: 'annualROI', label: 'Avg Annual ROI', tdClass: 'roi-cell', render: r => formatPercent(r.annualROI) },
+      { key: 'avgPrice', label: 'Avg Asking Price', render: r => formatUSD(r.avgPrice) },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'avgAnnualProfit', 'desc');
+  }
+
+  function renderNicheProfitChart(md) {
+    destroyChart('nicheProfitRank');
+    const niches = Object.keys(md.nicheAcc)
+      .map(n => ({ name: n, profit: (md.nicheAvgProfit[n] || 0) * 12 }))
+      .filter(n => n.profit > 0)
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 15);
+
+    state.charts.nicheProfitRank = new Chart($('#chart-niche-profit-rank'), {
+      type: 'bar',
+      data: {
+        labels: niches.map(n => n.name),
+        datasets: [{
+          label: 'Avg Annual Net Profit',
+          data: niches.map(n => Math.round(n.profit)),
+          backgroundColor: 'rgba(46,160,67,0.6)',
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        ...chartDefaults,
+        indexAxis: 'y',
+        plugins: { ...chartDefaults.plugins, legend: { display: false },
+          tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+        },
+        scales: {
+          ...chartDefaults.scales,
+          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatUSD(v) } },
+        },
+      },
+    });
+  }
+
+  function renderNicheROIChart(md) {
+    destroyChart('nicheROIRank');
+    const niches = Object.keys(md.nicheAcc)
+      .map(n => {
+        const mult = md.nicheAvgMultiple[n] || 0;
+        return { name: n, roi: mult > 0 ? (12 / mult) * 100 : 0 };
+      })
+      .filter(n => n.roi > 0 && (md.nicheTotalListings[n.name] || 0) >= 3)
+      .sort((a, b) => b.roi - a.roi)
+      .slice(0, 15);
+
+    state.charts.nicheROIRank = new Chart($('#chart-niche-roi-rank'), {
+      type: 'bar',
+      data: {
+        labels: niches.map(n => n.name),
+        datasets: [{
+          label: 'Avg Annual ROI %',
+          data: niches.map(n => parseFloat(n.roi.toFixed(1))),
+          backgroundColor: 'rgba(79,134,247,0.6)',
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        ...chartDefaults,
+        indexAxis: 'y',
+        plugins: { ...chartDefaults.plugins, legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.raw + '%' } },
+        },
+        scales: {
+          ...chartDefaults.scales,
+          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => v + '%' } },
+        },
+      },
+    });
   }
 
   // =====================================================================
@@ -1335,26 +1575,45 @@
     destroyChart('monMultiple');
     destroyChart('monProfit');
 
-    const mons = Object.keys(md.monetizationAvgMultiple).sort((a, b) => md.monetizationAvgMultiple[a] - md.monetizationAvgMultiple[b]).slice(0, 10);
+    // Filter to monetizations that have data
+    const allMons = Object.keys(md.monAcc).filter(m => md.monAcc[m].multiple.length > 0);
+    if (!allMons.length) return;
+
+    const monsByMultiple = [...allMons].sort((a, b) => (md.monetizationAvgMultiple[a] || 0) - (md.monetizationAvgMultiple[b] || 0)).slice(0, 12);
 
     state.charts.monMultiple = new Chart($('#chart-monetization-multiple'), {
       type: 'bar',
       data: {
-        labels: mons,
-        datasets: [{ label: 'Avg Multiple', data: mons.map(m => md.monetizationAvgMultiple[m]?.toFixed(1) || 0), backgroundColor: 'rgba(79,134,247,0.6)', borderRadius: 3 }],
+        labels: monsByMultiple,
+        datasets: [{ label: 'Avg Multiple', data: monsByMultiple.map(m => parseFloat((md.monetizationAvgMultiple[m] || 0).toFixed(1))), backgroundColor: 'rgba(79,134,247,0.6)', borderRadius: 3 }],
       },
-      options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } } },
+      options: {
+        ...chartDefaults, indexAxis: 'y',
+        plugins: { ...chartDefaults.plugins, legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.raw + 'x' } },
+        },
+      },
     });
 
-    const monsByProfit = Object.keys(md.monetizationAvgProfit).sort((a, b) => md.monetizationAvgProfit[b] - md.monetizationAvgProfit[a]).slice(0, 10);
+    const monsByProfit = [...allMons].filter(m => (md.monetizationAvgProfit[m] || 0) > 0)
+      .sort((a, b) => (md.monetizationAvgProfit[b] || 0) - (md.monetizationAvgProfit[a] || 0)).slice(0, 12);
 
     state.charts.monProfit = new Chart($('#chart-monetization-profit'), {
       type: 'bar',
       data: {
         labels: monsByProfit,
-        datasets: [{ label: 'Avg Monthly Profit', data: monsByProfit.map(m => Math.round(md.monetizationAvgProfit[m] || 0)), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 }],
+        datasets: [{ label: 'Avg Annual Net Profit', data: monsByProfit.map(m => Math.round((md.monetizationAvgProfit[m] || 0) * 12)), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 }],
       },
-      options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } } },
+      options: {
+        ...chartDefaults, indexAxis: 'y',
+        plugins: { ...chartDefaults.plugins, legend: { display: false },
+          tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
+        },
+        scales: {
+          ...chartDefaults.scales,
+          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatUSD(v) } },
+        },
+      },
     });
   }
 
@@ -1364,18 +1623,17 @@
   function renderTrends(forSale, sold, md) {
     const niches = Object.keys(md.nicheTotalListings);
 
-    // Compute niche metrics
     const nicheMetrics = niches.map(n => {
       const soldCount = md.nicheSoldCount[n] || 0;
-      const activeCount = (md.nicheTotalListings[n] || 0) - soldCount;
+      const activeCount = md.nicheActiveCount[n] || 0;
       const avgMult = md.nicheAvgMultiple[n] || 0;
       const avgProf = md.nicheAvgProfit[n] || 0;
+      const avgRev = md.nicheAvgRevenue[n] || 0;
       const demandRatio = activeCount > 0 ? soldCount / activeCount : soldCount;
 
-      return { name: n, soldCount, activeCount, avgMult, avgProf, demandRatio };
+      return { name: n, soldCount, activeCount, avgMult, avgProf, avgRev, demandRatio };
     }).filter(n => n.soldCount > 0 || n.activeCount > 0);
 
-    // Sort by demand ratio (sold/active) = momentum
     nicheMetrics.sort((a, b) => b.demandRatio - a.demandRatio);
     const top15 = nicheMetrics.slice(0, 15);
 
@@ -1383,6 +1641,9 @@
       const heat = n.demandRatio >= 2 ? 'hot' : n.demandRatio >= 1 ? 'warm' : 'cool';
       const heatLabel = heat === 'hot' ? 'High Demand' : heat === 'warm' ? 'Moderate' : 'Low Demand';
       const annualROI = n.avgMult > 0 ? (12 / n.avgMult) * 100 : 0;
+      const annualProfit = n.avgProf * 12;
+      const annualRevenue = n.avgRev * 12;
+      const margin = n.avgRev > 0 ? (n.avgProf / n.avgRev) * 100 : 0;
 
       return `
         <div class="trend-card">
@@ -1393,8 +1654,12 @@
           <div class="trend-stats">
             <div class="trend-stat"><span class="trend-stat-label">Sold</span><span class="trend-stat-value">${n.soldCount}</span></div>
             <div class="trend-stat"><span class="trend-stat-label">Active</span><span class="trend-stat-value">${n.activeCount}</span></div>
+            <div class="trend-stat"><span class="trend-stat-label">Avg Annual Profit</span><span class="trend-stat-value" style="color:var(--success)">${formatUSD(annualProfit)}</span></div>
+            <div class="trend-stat"><span class="trend-stat-label">Avg Annual Revenue</span><span class="trend-stat-value">${formatUSD(annualRevenue)}</span></div>
+            <div class="trend-stat"><span class="trend-stat-label">Avg Margin</span><span class="trend-stat-value">${formatPercent(margin)}</span></div>
             <div class="trend-stat"><span class="trend-stat-label">Avg Multiple</span><span class="trend-stat-value">${formatMultiple(n.avgMult)}</span></div>
-            <div class="trend-stat"><span class="trend-stat-label">Avg ROI</span><span class="trend-stat-value">${formatPercent(annualROI)}</span></div>
+            <div class="trend-stat"><span class="trend-stat-label">Avg Annual ROI</span><span class="trend-stat-value" style="color:var(--accent)">${formatPercent(annualROI)}</span></div>
+            <div class="trend-stat"><span class="trend-stat-label">Demand Ratio</span><span class="trend-stat-value">${n.demandRatio.toFixed(1)}x</span></div>
           </div>
         </div>
       `;
