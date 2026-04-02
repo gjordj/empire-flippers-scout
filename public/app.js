@@ -96,6 +96,9 @@
     compsGrid: $('#comps-grid'),
     daysOnMarketTable: $('#days-on-market-table'),
     budgetTiers: $('#budget-tiers'),
+    buildVsBuyGrid: $('#build-vs-buy-grid'),
+    moatTable: $('#moat-table'),
+    replicableTable: $('#replicable-table'),
     // Favorites
     favoritesGrid: $('#favorites-grid'),
     favoritesEmpty: $('#favorites-empty'),
@@ -1288,6 +1291,9 @@
       ['BudgetOptimizer', () => renderBudgetOptimizer(forSale, md)],
       ['ScatterRevProfit', () => renderScatterRevProfit(forSale)],
       ['Seasonality', () => renderSeasonality(sold)],
+      ['BuildVsBuy', () => renderBuildVsBuy(forSale, md)],
+      ['MoatTable', () => renderMoatTable(forSale, md)],
+      ['ReplicableTable', () => renderReplicableTable(forSale, md)],
     ];
     for (const [name, fn] of renders) {
       try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
@@ -3029,6 +3035,297 @@
         options: vBarOpts({ title: '', yLabel: 'Sales Count' })
       });
     }
+  }
+
+  // =====================================================================
+  //  BUILD vs BUY — AI REPLICABILITY ANALYSIS
+  // =====================================================================
+
+  // Replicability score by monetization type (0-100, higher = easier to replicate)
+  const MONETIZATION_REPLICABILITY = {
+    'Display Advertising': 90,
+    'Advertising': 90,
+    'Adsense': 90,
+    'Affiliate': 80,
+    'Amazon Associates': 80,
+    'Info Products': 75,
+    'Digital Products': 70,
+    'SaaS': 55,
+    'Subscription': 50,
+    'eCommerce': 35,
+    'Dropshipping': 45,
+    'Amazon FBA': 20,
+    'FBA': 20,
+    'Amazon KDP': 65,
+    'KDP': 65,
+    'Lead Generation': 60,
+    'Service': 25,
+    'Services': 25,
+    'Marketplace': 40,
+    'App': 50,
+    'Software': 50,
+    'Membership': 45,
+  };
+
+  function calculateReplicability(listing, md) {
+    const niches = getNicheNames(listing);
+    const mons = getMonetizationNames(listing);
+    const ageMonths = getAgeMonths(listing);
+    const price = parseFloat(listing.listing_price || 0);
+    const profit = parseFloat(listing.average_monthly_net_profit || 0);
+    const revenue = parseFloat(listing.average_monthly_gross_revenue || 0);
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    const hours = listing.hours_worked_per_week;
+    const hasTrademark = listing.has_trademark;
+    const hasSBA = listing.sba_financing_approved;
+
+    const rep = {};
+
+    // 1. Monetization replicability (0-35): content/ad businesses are easy, physical product businesses are hard
+    const monScores = mons.map(m => {
+      // Fuzzy match
+      const key = Object.keys(MONETIZATION_REPLICABILITY).find(k => m.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(m.toLowerCase()));
+      return key ? MONETIZATION_REPLICABILITY[key] : 50;
+    });
+    rep.monetization = monScores.length ? (monScores.reduce((a, b) => a + b, 0) / monScores.length) * 0.35 : 17;
+
+    // 2. Age penalty (0-25): older businesses have SEO authority, backlinks, reputation that take years to build
+    // < 12 months = easy to replicate, > 60 months = very hard
+    rep.ageMoat = Math.min(25, ageMonths * 0.4);
+    rep.ageReplicable = 25 - rep.ageMoat; // Invert: young = replicable
+
+    // 3. Brand moat (0-15): trademark = strong brand, SBA = institutional trust
+    rep.brandMoat = (hasTrademark ? 10 : 0) + (hasSBA ? 5 : 0);
+    rep.brandReplicable = 15 - rep.brandMoat;
+
+    // 4. Operational simplicity (0-15): low hours = simple ops, AI can handle
+    if (hours != null && hours >= 0) {
+      rep.opsReplicable = hours <= 5 ? 15 : hours <= 10 ? 12 : hours <= 20 ? 8 : Math.max(0, 15 - hours * 0.3);
+    } else {
+      rep.opsReplicable = 8;
+    }
+
+    // 5. Margin signal (0-10): very high margins suggest content/digital (easy to replicate), low margins suggest physical/complex
+    rep.marginSignal = Math.min(10, margin * 0.15);
+
+    const replicabilityScore = Math.round(
+      rep.monetization + rep.ageReplicable + rep.brandReplicable + rep.opsReplicable + rep.marginSignal
+    );
+
+    // Moat score is the inverse
+    const moatScore = 100 - replicabilityScore;
+
+    // Build cost estimate (very rough): content sites ~$500-5K, SaaS ~$5K-50K, eCommerce ~$10K-100K
+    const baseBuildCost = monScores.length ? monScores.reduce((a, b) => a + b, 0) / monScores.length : 50;
+    const estimatedBuildCost = baseBuildCost > 70
+      ? Math.max(200, profit * 0.5) // Content/affiliate: very cheap
+      : baseBuildCost > 50
+      ? Math.max(2000, profit * 2)  // SaaS/digital: moderate
+      : Math.max(10000, profit * 5); // Physical/complex: expensive
+
+    // Time to replicate (months)
+    const estimatedTimeMonths = baseBuildCost > 70 ? 2 : baseBuildCost > 50 ? 6 : 12;
+
+    // Verdict
+    let verdict, verdictClass;
+    if (replicabilityScore >= 70) {
+      verdict = 'Build It';
+      verdictClass = 'verdict-build';
+    } else if (replicabilityScore >= 50) {
+      verdict = 'Consider Building';
+      verdictClass = 'verdict-maybe';
+    } else if (replicabilityScore >= 30) {
+      verdict = 'Lean Buy';
+      verdictClass = 'verdict-lean-buy';
+    } else {
+      verdict = 'Buy It';
+      verdictClass = 'verdict-buy';
+    }
+
+    // Key moats (human-readable)
+    const moats = [];
+    if (ageMonths > 36) moats.push(`${Math.round(ageMonths / 12)}yr SEO authority`);
+    if (hasTrademark) moats.push('Trademarked brand');
+    if (hasSBA) moats.push('SBA approved');
+    if (baseBuildCost < 40) moats.push('Physical supply chain');
+    if (hours != null && hours > 25) moats.push('Complex operations');
+
+    // AI advantages
+    const aiAdvantages = [];
+    if (baseBuildCost > 70) aiAdvantages.push('AI can generate all content');
+    if (baseBuildCost > 55) aiAdvantages.push('AI can build the tech stack');
+    if (margin > 60) aiAdvantages.push('High-margin digital model');
+    if (hours != null && hours < 10) aiAdvantages.push('Simple operations to automate');
+
+    return {
+      replicabilityScore: Math.min(100, Math.max(0, replicabilityScore)),
+      moatScore: Math.min(100, Math.max(0, moatScore)),
+      verdict, verdictClass,
+      estimatedBuildCost, estimatedTimeMonths,
+      moats, aiAdvantages,
+      breakdown: rep,
+    };
+  }
+
+  // --- Build vs Buy Grid ---
+  function renderBuildVsBuy(forSale, md) {
+    const el = dom.buildVsBuyGrid;
+    if (!el) return;
+
+    const items = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const mons = getMonetizationNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const rep = calculateReplicability(l, md);
+
+      return { listing: l, num, niches, mons, price, profit, ...rep };
+    })
+    .filter(i => i.profit > 0)
+    .sort((a, b) => b.replicabilityScore - a.replicabilityScore)
+    .slice(0, 30);
+
+    el.innerHTML = items.map((f, i) => {
+      const savingsVsBuy = f.price - f.estimatedBuildCost;
+      const savingsPct = f.price > 0 ? (savingsVsBuy / f.price * 100) : 0;
+
+      return `
+        <div class="forecast-card bvb-card">
+          <div class="forecast-card-header">
+            <div class="forecast-card-title">
+              <span class="forecast-rank">${i + 1}</span>
+              <a href="https://empireflippers.com/listing/${escapeHtml(String(f.num))}" target="_blank" rel="noopener">#${escapeHtml(String(f.num))}</a>
+              <span class="forecast-niche">${f.mons.map(m => escapeHtml(m)).join(', ')}</span>
+            </div>
+            <span class="bvb-verdict ${f.verdictClass}">${f.verdict}</span>
+          </div>
+
+          <div class="bvb-score-row">
+            <div class="bvb-score-bar">
+              <div class="bvb-score-fill" style="width:${f.replicabilityScore}%;background:${f.replicabilityScore >= 70 ? 'var(--success)' : f.replicabilityScore >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div>
+            </div>
+            <span class="bvb-score-value">${f.replicabilityScore}/100 replicable</span>
+          </div>
+
+          <div class="forecast-metrics">
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Asking Price</span>
+              <span class="forecast-metric-value">${formatUSD(f.price)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Est. Build Cost</span>
+              <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(f.estimatedBuildCost)}</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Savings vs Buy</span>
+              <span class="forecast-metric-value" style="color:var(--success)">${formatUSD(savingsVsBuy)} (${formatPercent(savingsPct)})</span>
+            </div>
+            <div class="forecast-metric">
+              <span class="forecast-metric-label">Est. Build Time</span>
+              <span class="forecast-metric-value">${f.estimatedTimeMonths} months</span>
+            </div>
+          </div>
+
+          ${f.aiAdvantages.length ? `
+            <div class="bvb-tags">
+              <span class="bvb-tag-label">AI can:</span>
+              ${f.aiAdvantages.map(a => `<span class="bvb-tag bvb-tag-ai">${escapeHtml(a)}</span>`).join('')}
+            </div>
+          ` : ''}
+
+          ${f.moats.length ? `
+            <div class="bvb-tags">
+              <span class="bvb-tag-label">Moats:</span>
+              ${f.moats.map(m => `<span class="bvb-tag bvb-tag-moat">${escapeHtml(m)}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('') || '<p class="empty-state">No replicability data available.</p>';
+  }
+
+  // --- Strongest Moats Table ---
+  function renderMoatTable(forSale, md) {
+    const table = dom.moatTable;
+    if (!table) return;
+
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const mons = getMonetizationNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const rep = calculateReplicability(l, md);
+
+      return {
+        _name: `#${num}`, _num: num,
+        niche: niches.join(', '), monetization: mons.join(', '),
+        price, annualProfit: profit * 12,
+        moatScore: rep.moatScore,
+        replicabilityScore: rep.replicabilityScore,
+        verdict: rep.verdict, verdictClass: rep.verdictClass,
+        moats: rep.moats.join(', ') || 'None identified',
+      };
+    })
+    .filter(r => r.annualProfit > 0 && r.moatScore >= 50)
+    .sort((a, b) => b.moatScore - a.moatScore)
+    .slice(0, 40);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: 'monetization', label: 'Type', render: r => escapeHtml(r.monetization) },
+      { key: 'moatScore', label: 'Moat Score', render: r => `<span class="bvb-verdict ${r.verdictClass}">${r.moatScore}/100</span>` },
+      { key: 'price', label: 'Price', render: r => formatUSD(r.price) },
+      { key: 'annualProfit', label: 'Annual Profit', tdClass: 'profit-cell', render: r => formatUSD(r.annualProfit) },
+      { key: 'moats', label: 'Key Moats', render: r => `<span class="moat-text">${escapeHtml(r.moats)}</span>` },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'moatScore', 'desc');
+  }
+
+  // --- Most Replicable Table ---
+  function renderReplicableTable(forSale, md) {
+    const table = dom.replicableTable;
+    if (!table) return;
+
+    const rows = forSale.map(l => {
+      const num = l.listing_number || l.id;
+      const niches = getNicheNames(l);
+      const mons = getMonetizationNames(l);
+      const price = parseFloat(l.listing_price || 0);
+      const profit = parseFloat(l.average_monthly_net_profit || 0);
+      const rep = calculateReplicability(l, md);
+
+      return {
+        _name: `#${num}`, _num: num,
+        niche: niches.join(', '), monetization: mons.join(', '),
+        price, annualProfit: profit * 12, monthlyProfit: profit,
+        replicabilityScore: rep.replicabilityScore,
+        estimatedBuildCost: rep.estimatedBuildCost,
+        estimatedTimeMonths: rep.estimatedTimeMonths,
+        savings: price - rep.estimatedBuildCost,
+        verdict: rep.verdict, verdictClass: rep.verdictClass,
+      };
+    })
+    .filter(r => r.monthlyProfit > 0 && r.replicabilityScore >= 50)
+    .sort((a, b) => b.replicabilityScore - a.replicabilityScore)
+    .slice(0, 40);
+
+    const columns = [
+      { key: '_rank', label: '#' },
+      { key: '_name', label: 'Listing', render: r => `<a href="https://empireflippers.com/listing/${escapeHtml(String(r._num))}" target="_blank" rel="noopener">${escapeHtml(r._name)}</a>` },
+      { key: 'monetization', label: 'Type', render: r => escapeHtml(r.monetization) },
+      { key: 'replicabilityScore', label: 'Replicable', render: r => `<span class="bvb-verdict ${r.verdictClass}">${r.replicabilityScore}/100</span>` },
+      { key: 'price', label: 'Asking Price', render: r => formatUSD(r.price) },
+      { key: 'estimatedBuildCost', label: 'Build Cost', tdClass: 'profit-cell', render: r => formatUSD(r.estimatedBuildCost) },
+      { key: 'savings', label: 'Savings', tdClass: 'profit-cell', render: r => formatUSD(r.savings) },
+      { key: 'estimatedTimeMonths', label: 'Build Time', render: r => r.estimatedTimeMonths + ' mo' },
+      { key: 'annualProfit', label: 'Annual Profit', tdClass: 'profit-cell', render: r => formatUSD(r.annualProfit) },
+    ];
+
+    buildSortableLeaderboard(table, columns, rows, 'replicabilityScore', 'desc');
   }
 
   // =====================================================================
