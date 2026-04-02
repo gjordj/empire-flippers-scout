@@ -1142,27 +1142,24 @@
 
     dom.dashBestScore.textContent = scored[0] ? scored[0].score + '/100' : '--';
 
-    // Leaderboards (before opportunities so they appear first)
-    renderNicheLeaderboard(md);
-    renderNicheProfitChart(md);
-    renderNicheROIChart(md);
-    renderMonetizationLeaderboard(md);
-
-    // Top 20 Opportunities
-    renderOpportunities(scored.slice(0, 20));
-
-    // Charts
-    renderNicheDistChart(forSale, sold);
-    renderPriceDistChart(forSale);
-    renderProfitDistChart(forSale);
-    renderMultipleDistChart(forSale, sold);
-    renderMonetizationCharts(forSale, sold, md);
-
-    // Trends
-    renderTrends(forSale, sold, md);
-
-    // Wealth Picks
-    renderWealthPicks(scored.slice(0, 10), md);
+    // Each render wrapped in try/catch so one failure doesn't break the rest
+    const renders = [
+      ['NicheLeaderboard', () => renderNicheLeaderboard(md)],
+      ['NicheProfitChart', () => renderNicheProfitChart(md)],
+      ['NicheROIChart', () => renderNicheROIChart(md)],
+      ['MonetizationLeaderboard', () => renderMonetizationLeaderboard(md)],
+      ['Opportunities', () => renderOpportunities(scored.slice(0, 20))],
+      ['NicheDistChart', () => renderNicheDistChart(forSale, sold)],
+      ['PriceDistChart', () => renderPriceDistChart(forSale)],
+      ['ProfitDistChart', () => renderProfitDistChart(forSale)],
+      ['MultipleDistChart', () => renderMultipleDistChart(forSale, sold)],
+      ['MonetizationCharts', () => renderMonetizationCharts(forSale, sold, md)],
+      ['Trends', () => renderTrends(forSale, sold, md)],
+      ['WealthPicks', () => renderWealthPicks(scored.slice(0, 10), md)],
+    ];
+    for (const [name, fn] of renders) {
+      try { fn(); } catch (err) { console.error(`Render ${name} failed:`, err); }
+    }
   }
 
   function avg(arr, fn) {
@@ -1575,43 +1572,68 @@
     destroyChart('monMultiple');
     destroyChart('monProfit');
 
+    const canvas1 = $('#chart-monetization-multiple');
+    const canvas2 = $('#chart-monetization-profit');
+    if (!canvas1 || !canvas2) { console.warn('Monetization chart canvases not found'); return; }
+
     // Filter to monetizations that have data
-    const allMons = Object.keys(md.monAcc).filter(m => md.monAcc[m].multiple.length > 0);
-    if (!allMons.length) return;
+    const allMons = Object.keys(md.monAcc || {}).filter(m => md.monAcc[m].multiple.length > 0);
+    console.log('Monetization chart data:', allMons.length, 'types found:', allMons.slice(0, 5));
+    if (!allMons.length) { console.warn('No monetization data for charts'); return; }
 
     const monsByMultiple = [...allMons].sort((a, b) => (md.monetizationAvgMultiple[a] || 0) - (md.monetizationAvgMultiple[b] || 0)).slice(0, 12);
+    const multipleData = monsByMultiple.map(m => parseFloat((md.monetizationAvgMultiple[m] || 0).toFixed(1)));
 
-    state.charts.monMultiple = new Chart($('#chart-monetization-multiple'), {
+    state.charts.monMultiple = new Chart(canvas1, {
       type: 'bar',
       data: {
         labels: monsByMultiple,
-        datasets: [{ label: 'Avg Multiple', data: monsByMultiple.map(m => parseFloat((md.monetizationAvgMultiple[m] || 0).toFixed(1))), backgroundColor: 'rgba(79,134,247,0.6)', borderRadius: 3 }],
+        datasets: [{
+          label: 'Avg Multiple',
+          data: multipleData,
+          backgroundColor: 'rgba(79,134,247,0.6)',
+          borderRadius: 3,
+        }],
       },
       options: {
-        ...chartDefaults, indexAxis: 'y',
-        plugins: { ...chartDefaults.plugins, legend: { display: false },
+        responsive: true,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
           tooltip: { callbacks: { label: ctx => ctx.raw + 'x' } },
+        },
+        scales: {
+          x: { ticks: { color: '#6a737d' }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
     });
 
     const monsByProfit = [...allMons].filter(m => (md.monetizationAvgProfit[m] || 0) > 0)
       .sort((a, b) => (md.monetizationAvgProfit[b] || 0) - (md.monetizationAvgProfit[a] || 0)).slice(0, 12);
+    const profitData = monsByProfit.map(m => Math.round((md.monetizationAvgProfit[m] || 0) * 12));
 
-    state.charts.monProfit = new Chart($('#chart-monetization-profit'), {
+    state.charts.monProfit = new Chart(canvas2, {
       type: 'bar',
       data: {
         labels: monsByProfit,
-        datasets: [{ label: 'Avg Annual Net Profit', data: monsByProfit.map(m => Math.round((md.monetizationAvgProfit[m] || 0) * 12)), backgroundColor: 'rgba(46,160,67,0.6)', borderRadius: 3 }],
+        datasets: [{
+          label: 'Avg Annual Net Profit',
+          data: profitData,
+          backgroundColor: 'rgba(46,160,67,0.6)',
+          borderRadius: 3,
+        }],
       },
       options: {
-        ...chartDefaults, indexAxis: 'y',
-        plugins: { ...chartDefaults.plugins, legend: { display: false },
+        responsive: true,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
           tooltip: { callbacks: { label: ctx => formatUSD(ctx.raw) } },
         },
         scales: {
-          ...chartDefaults.scales,
-          x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatUSD(v) } },
+          x: { ticks: { color: '#6a737d', callback: v => formatUSD(v) }, grid: { color: 'rgba(45,49,72,0.5)' } },
+          y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } },
         },
       },
     });
